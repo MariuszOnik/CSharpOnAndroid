@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/GameApi/GameApi.csproj" />
     <Project Path="src/GamePlayer/GamePlayer.csproj" />
   </Folder>
 </Solution>

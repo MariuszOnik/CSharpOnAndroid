@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+  <title>Edytor</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #282c34; color: #abb2bf; font-family: sans-serif; }
+    body { display: flex; flex-direction: column; }
+    #toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #21252b; }
+    #play { background: #3a9b4c; color: #fff; border: 0; border-radius: 6px; padding: 8px 16px; font-size: 16px; font-weight: bold; }
+    #play:disabled { opacity: .5; }
+    #status { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #status.ok { color: #98c379; }
+    #status.error { color: #e06c75; }
+    #editor { flex: 1; min-height: 0; }
+    #symbols { display: flex; overflow-x: auto; background: #21252b; }
+    #symbols button { flex: 0 0 auto; min-width: 40px; height: 40px; background: none; color: #abb2bf; border: 0; border-right: 1px solid #181a1f; font: 18px monospace; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <button id="play">▶ Graj</button>
+    <span id="status"></span>
+  </div>
+  <div id="editor"></div>
+  <div id="symbols">
+    <button data-insert="    ">⇥</button>
+    <button>{</button><button>}</button><button>(</button><button>)</button>
+    <button>;</button><button>.</button><button>=</button><button>"</button>
+    <button>&lt;</button><button>&gt;</button><button>[</button><button>]</button>
+    <button>+</button><button>-</button><button>*</button><button>/</button>
+    <button>!</button><button>&amp;</button><button>|</button><button>,</button>
+  </div>
+  <script src="editor.js"></script>
+</body>
+</html>

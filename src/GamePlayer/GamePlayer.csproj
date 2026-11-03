@@ -3,12 +3,36 @@
     <TargetFramework>net10.0-android</TargetFramework>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationId>com.csharponandroid.gameplayer</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <!-- Kod gracza jest kompilowany w locie, więc trimmer nie może wycinać API, z którego ten kod korzysta. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <!-- APK ma działać samodzielnie (np. wgrane przez FTP), bez FastDev. -->
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
-    <PackageReference Include="MonoGame.Framework.Android" Version="3.8.*" />
+    <PackageReference Include="MonoGame.Framework.Android" Version="3.8.6" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <Reference Include="Mono.Android.Export" />
+    <ProjectReference Include="..\GameApi\GameApi.csproj" />
   </ItemGroup>
+
+  <!-- Pliki .cs w Assets to kod gracza (kompilowany na telefonie), nie kod aplikacji. -->
+  <ItemGroup>
+    <Compile Remove="Assets\**" />
+  </ItemGroup>
+
+  <!-- Referencje dla Roslyna na telefonie: Assets/refs/*.dll -->
+  <ItemGroup>
+    <AndroidAsset Include="$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Ref\$(BundledNETCoreAppPackageVersion)\ref\net10.0\*.dll" Link="Assets\refs\%(Filename)%(Extension)" />
+    <AndroidAsset Include="$(NuGetPackageRoot)monogame.framework.android\3.8.6\lib\net8.0-android34.0\MonoGame.Framework.dll" Link="Assets\refs\MonoGame.Framework.dll" />
+  </ItemGroup>
+  <Target Name="AddGameApiAsset" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <AndroidAsset Include="@(_ResolvedProjectReferencePaths)" Condition="'%(Filename)' == 'GameApi'" Link="Assets\refs\GameApi.dll" />
+    </ItemGroup>
+  </Target>
 </Project>
