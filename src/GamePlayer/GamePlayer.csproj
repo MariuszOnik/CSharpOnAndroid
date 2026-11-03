@@ -10,6 +10,8 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <!-- Kod gracza jest kompilowany w locie, więc trimmer nie może wycinać API, z którego ten kod korzysta. -->
     <PublishTrimmed>false</PublishTrimmed>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- APK ma działać samodzielnie (np. wgrane przez FTP), bez FastDev. -->
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>

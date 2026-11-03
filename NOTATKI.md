@@ -19,6 +19,20 @@ Plan techniczny:
 - Emulator: AVD `Pixel_API35` (Android 15, x86_64)
 - Projekt `src/GamePlayer` (MonoGame Android, przestawiony na `net10.0-android`, targetSdk 36) – buduje się, instaluje i działa w emulatorze (niebieski ekran)
 
+## Stan na 2026-11-03 wieczór – pierwsza działająca wersja ✅
+- Edytor CodeMirror 6 w WebView (`editor-web/` → `npm run build` → `Assets/editor/editor.js`)
+- Roslyn kompiluje kod **na telefonie**, błędy podkreślane w edytorze
+- „▶ Graj” uruchamia grę w MonoGame, Wstecz wraca do edytora, kod zapisuje się w `files/Game.cs`
+- `GameScript` (src/GameApi): `Start/Update/Draw`, `FillRect`, dotyk, `LoadImage` + `DrawImage(Centered)`
+- Obrazki: PNG bez mgcb (`Texture2D.FromStream`) – z `Assets/images/` albo `files/images/` gracza
+- APK Release (bez AOT i trimmingu, ~58 MB) wysłane na telefon przez FTP do `Download/CsharpGamePlayer.apk`
+
+Pułapki, na które już trafiliśmy:
+- FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`
+- mgcb się wywalał → usunięty `MonoGame.Content.Builder.Task` (obrazki ładujemy z PNG)
+- Release: AOT wymaga trimmingu, a trimming psuje kod gracza → `RunAOTCompilation=false`
+- Android 15+: edge-to-edge → ręczne odsunięcie od pasków systemowych (`SystemBarsPadding`)
+
 ## Przydatne polecenia
 ```powershell
 .\start-emulator.ps1   # włącza emulator
@@ -27,7 +41,9 @@ adb devices            # lista podłączonych urządzeń
 ```
 
 ## Następnym razem
-1. Ekran edytora: WebView + CodeMirror 6 z kolorowaniem C#.
-2. Roslyn na telefonie: kompilacja tekstu z edytora do assembly w pamięci, lista błędów.
-3. Przycisk „Graj”: załadowanie skompilowanego assembly i uruchomienie gry MonoGame.
-4. Telefon: włączyć opcje programisty + debugowanie USB, kabel do transmisji danych.
+1. Test na prawdziwym telefonie (czas kompilacji Roslyna na ARM).
+2. IntelliSense: podpowiedzi po kropce (`CompletionService`).
+3. Wybór własnych obrazków z galerii telefonu → `files/images/`.
+4. Tekst na ekranie (czcionka bez mgcb, np. FontStashSharp).
+5. Kilka plików / projektów gry zamiast jednego `Game.cs`.
+6. Mniejsze APK: tylko `android-arm64`.

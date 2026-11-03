@@ -7,9 +7,12 @@ class MojaGra : GameScript
     Vector2 pilka;
     Vector2 predkosc = new Vector2(400, 300);
     int odbicia;
+    float obrot;
+    Texture2D obrazekPilki;
 
     public override void Start()
     {
+        obrazekPilki = LoadImage("pilka.png");
         Background = new Color(20, 24, 40);
         gracz = new Vector2(Width / 2, Height - 200);
         pilka = new Vector2(Width / 2, Height / 3);
@@ -22,6 +25,7 @@ class MojaGra : GameScript
             gracz = Vector2.Lerp(gracz, TouchPosition, 10 * dt);
 
         pilka += predkosc * dt;
+        obrot += 5 * dt;
 
         if (pilka.X < 0 || pilka.X > Width - 40) predkosc.X = -predkosc.X;
         if (pilka.Y < 0 || pilka.Y > Height - 40) predkosc.Y = -predkosc.Y;
@@ -38,7 +42,8 @@ class MojaGra : GameScript
     public override void Draw()
     {
         FillRect(gracz.X - 100, gracz.Y - 20, 200, 40, Color.Orange);
-        FillRect(pilka.X, pilka.Y, 40, 40, Color.White);
+        // Piłka jest 40x40, a obrazek 64x64, więc skala 40/64.
+        DrawImageCentered(obrazekPilki, pilka + new Vector2(20, 20), obrot, 40f / 64f);
 
         // Licznik odbić jako kwadraciki u góry.
         for (int i = 0; i < odbicia; i++)

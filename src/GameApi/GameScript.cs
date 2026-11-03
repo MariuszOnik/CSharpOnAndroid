@@ -45,11 +45,35 @@ public abstract class GameScript
 
     public void FillRect(Rectangle rect, Color color) => Batch.Draw(Pixel, rect, color);
 
-    internal void Attach(GraphicsDevice device, SpriteBatch batch, Texture2D pixel)
+    /// <summary>
+    /// Wczytuje obrazek PNG/JPG po nazwie, np. LoadImage("pilka.png").
+    /// Najpierw szuka we własnych obrazkach gracza, potem we wbudowanych.
+    /// </summary>
+    public Texture2D LoadImage(string name)
+    {
+        using var stream = _openImage(name);
+        return Texture2D.FromStream(GraphicsDevice, stream, DefaultColorProcessors.PremultiplyAlpha);
+    }
+
+    /// <summary>Rysuje obrazek w punkcie (x, y) – lewy górny róg.</summary>
+    public void DrawImage(Texture2D image, float x, float y, float scale = 1f) =>
+        Batch.Draw(image, new Vector2(x, y), null, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+
+    /// <summary>Rysuje obrazek wyśrodkowany w punkcie, z obrotem (radiany) i skalą.</summary>
+    public void DrawImageCentered(Texture2D image, Vector2 center, float rotation = 0f, float scale = 1f) =>
+        Batch.Draw(image, center, null, Color.White, rotation, new Vector2(image.Width / 2f, image.Height / 2f), scale, SpriteEffects.None, 0f);
+
+    /// <summary>Rysuje obrazek rozciągnięty do prostokąta.</summary>
+    public void DrawImage(Texture2D image, Rectangle destination) => Batch.Draw(image, destination, Color.White);
+
+    Func<string, System.IO.Stream> _openImage = null!;
+
+    internal void Attach(GraphicsDevice device, SpriteBatch batch, Texture2D pixel, Func<string, System.IO.Stream> openImage)
     {
         GraphicsDevice = device;
         Batch = batch;
         Pixel = pixel;
+        _openImage = openImage;
     }
 
     internal void SetTouches(TouchCollection touches) => Touches = touches;

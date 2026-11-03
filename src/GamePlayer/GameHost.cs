@@ -44,7 +44,7 @@ public class GameHost : Game
         Guard(() =>
         {
             _script = (GameScript)Activator.CreateInstance(PendingScriptType)!;
-            _script.Attach(GraphicsDevice, _batch, _pixel);
+            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage);
             _script.Start();
         });
     }
@@ -77,6 +77,30 @@ public class GameHost : Game
         }
 
         base.Draw(gameTime);
+    }
+
+    /// <summary>Folder na własne obrazki gracza (na razie wgrywane ręcznie, np. przez adb).</summary>
+    public static string UserImagesDir(Activity activity) => Path.Combine(activity.FilesDir!.AbsolutePath, "images");
+
+    // Strumień musi być przewijalny, a strumienie z Assets nie są – kopiujemy do pamięci.
+    Stream OpenImage(string name)
+    {
+        var userFile = Path.Combine(UserImagesDir(_activity), name);
+        if (File.Exists(userFile))
+            return File.OpenRead(userFile);
+
+        try
+        {
+            using var asset = _activity.Assets!.Open("images/" + name);
+            var memory = new MemoryStream();
+            asset.CopyTo(memory);
+            memory.Position = 0;
+            return memory;
+        }
+        catch (Java.IO.FileNotFoundException)
+        {
+            throw new FileNotFoundException($"Nie ma obrazka '{name}'.");
+        }
     }
 
     // Wyjątek w kodzie gracza nie może wywalić aplikacji: wracamy do edytora z opisem błędu.
