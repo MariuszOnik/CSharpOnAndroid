@@ -56,6 +56,9 @@ public class EditorActivity : Activity
         base.OnResume();
         if (GameHost.TakeRuntimeError() is { } error)
             SendResult(new CompileResult(false, 0, "Błąd w trakcie gry: " + error, []));
+
+        // Pliki mogły się zmienić: FTP, menedżer plików albo udzielona właśnie zgoda na dostęp.
+        RunJs("window.onResumed && window.onResumed()");
     }
 
     internal void RunJs(string script) => RunOnUiThread(() => _webView.EvaluateJavascript(script, null));
@@ -63,9 +66,10 @@ public class EditorActivity : Activity
     internal void SendResult(CompileResult result) =>
         RunJs($"window.onCompileResult({JsonSerializer.Serialize(result, JsonOptions)})");
 
-    internal void StartGame(Type scriptType)
+    internal void StartGame(Type scriptType, string project)
     {
         GameHost.PendingScriptType = scriptType;
+        GameHost.PendingImageDirs = GameFiles.ImageDirs(this, project);
         RunOnUiThread(() => StartActivity(new Intent(this, typeof(GameActivity))));
     }
 }
@@ -83,78 +87,3 @@ class SystemBarsPadding : Java.Lang.Object, View.IOnApplyWindowInsetsListener
     }
 }
 
-/// <summary>Obiekt widoczny w JavaScripcie jako window.Android.</summary>
-class EditorBridge(EditorActivity activity) : Java.Lang.Object
-{
-    [JavascriptInterface]
-    [Export("loadCode")]
-    public string LoadCode()
-    {
-        var path = GameFiles.CodePath(activity);
-        if (File.Exists(path))
-            return File.ReadAllText(path);
-
-        using var reader = new StreamReader(activity.Assets!.Open("sample/Game.cs"));
-        return reader.ReadToEnd();
-    }
-
-    /// <summary>Zwraca ścieżkę zapisanego pliku albo komunikat błędu.</summary>
-    [JavascriptInterface]
-    [Export("save")]
-    public string Save(string code)
-    {
-        try
-        {
-            var path = GameFiles.CodePath(activity);
-            File.WriteAllText(path, code);
-            return "Zapisano: " + path.Replace(Android.OS.Environment.ExternalStorageDirectory!.AbsolutePath, "/sdcard");
-        }
-        catch (Exception e)
-        {
-            return "Błąd zapisu: " + e.Message;
-        }
-    }
-
-    // Wywoływane na wątku mostka JavaScript, więc kompilacja nie blokuje UI.
-    [JavascriptInterface]
-    [Export("compile")]
-    public void Compile(string code)
-    {
-        Save(code);
-        CompileResult result;
-        try
-        {
-            result = ScriptCompiler.Compile(code, activity.Assets!);
-        }
-        catch (Exception e)
-        {
-            result = new CompileResult(false, 0, e.ToString(), []);
-        }
-
-        activity.SendResult(result);
-        if (result.ScriptType != null)
-            activity.StartGame(result.ScriptType);
-    }
-
-    /// <summary>Podpowiedzi liczone w tle; wynik wraca przez window.onCompletions(id, wynik).</summary>
-    [JavascriptInterface]
-    [Export("complete")]
-    public void Complete(int id, string code, int position)
-    {
-        var assets = activity.Assets!;
-        Task.Run(async () =>
-        {
-            string json;
-            try
-            {
-                json = JsonSerializer.Serialize(await CodeCompletion.GetAsync(code, position, assets), EditorActivity.JsonOptions);
-            }
-            catch (Exception e)
-            {
-                Android.Util.Log.Error("GamePlayer", "Completion: " + e);
-                json = "null";
-            }
-            activity.RunJs($"window.onCompletions({id},{json})");
-        });
-    }
-}

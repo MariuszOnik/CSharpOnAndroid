@@ -13,18 +13,21 @@ public record CompletionResult(int From, IReadOnlyList<CompletionOption> Options
 
 /// <summary>
 /// IntelliSense: podpowiedzi z Roslyna (ten sam CompletionService, którego używa Visual Studio).
-/// Workspace trzyma projekt z global usings i jednym dokumentem Game.cs, którego tekst podmieniamy przy każdym zapytaniu.
+/// Solution trzyma global usings i pliki projektu. Przy zapytaniu podmieniamy tylko te, które się zmieniły,
+/// więc Roslyn nie analizuje całego projektu od nowa.
 /// </summary>
 public static class CodeCompletion
 {
     static readonly SemaphoreSlim Gate = new(1, 1);
+    static readonly Dictionary<string, DocumentId> Documents = [];
     static AdhocWorkspace? _workspace;
-    static DocumentId? _documentId;
+    static ProjectId? _projectId;
+    static Solution? _solution;
 
-    static DocumentId Init(AssetManager assets)
+    static void Init(AssetManager assets)
     {
-        if (_documentId != null)
-            return _documentId;
+        if (_solution != null)
+            return;
 
         _workspace = new AdhocWorkspace(MefHostServices.DefaultHost);
         var project = _workspace.AddProject(ProjectInfo.Create(
@@ -38,18 +41,47 @@ public static class CodeCompletion
             metadataReferences: ScriptCompiler.GetReferences(assets)));
 
         _workspace.AddDocument(project.Id, "GlobalUsings.cs", SourceText.From(ScriptCompiler.GlobalUsings));
-        return _documentId = _workspace.AddDocument(project.Id, "Game.cs", SourceText.From("")).Id;
+        _projectId = project.Id;
+        _solution = _workspace.CurrentSolution;
     }
 
-    public static async Task<CompletionResult> GetAsync(string code, int position, AssetManager assets)
+    static async Task SyncAsync(IReadOnlyList<SourceFile> sources)
+    {
+        foreach (var name in Documents.Keys.Except(sources.Select(s => s.Name)).ToList())
+        {
+            _solution = _solution!.RemoveDocument(Documents[name]);
+            Documents.Remove(name);
+        }
+
+        foreach (var source in sources)
+        {
+            var text = SourceText.From(source.Text);
+            if (!Documents.TryGetValue(source.Name, out var id))
+            {
+                id = Documents[source.Name] = DocumentId.CreateNewId(_projectId!);
+                _solution = _solution!.AddDocument(id, source.Name, text);
+            }
+            else if (!(await _solution!.GetDocument(id)!.GetTextAsync()).ContentEquals(text))
+            {
+                _solution = _solution.WithDocumentText(id, text);
+            }
+        }
+    }
+
+    /// <param name="sources">Pliki projektu, w tym otwarty plik z aktualnym tekstem z edytora.</param>
+    /// <param name="file">Nazwa pliku, w którym stoi kursor.</param>
+    public static async Task<CompletionResult> GetAsync(IReadOnlyList<SourceFile> sources, string file, int position, AssetManager assets)
     {
         await Gate.WaitAsync();
         try
         {
-            var documentId = Init(assets);
-            var document = _workspace!.CurrentSolution.GetDocument(documentId)!.WithText(SourceText.From(code));
+            Init(assets);
+            await SyncAsync(sources);
+
+            var document = _solution!.GetDocument(Documents[file])!;
+            var length = (await document.GetTextAsync()).Length;
             var service = CompletionService.GetService(document)!;
-            var list = await service.GetCompletionsAsync(document, Math.Clamp(position, 0, code.Length));
+            var list = await service.GetCompletionsAsync(document, Math.Clamp(position, 0, length));
 
             // Pomijamy operatory i rzutowania (np. "-x", "!= y", "(byte)"), na telefonie tylko zaśmiecają listę.
             var options = list.ItemsList
@@ -67,7 +99,7 @@ public static class CodeCompletion
 
     /// <summary>Pierwsze zapytanie ładuje MEF i analizę semantyczną, więc robimy je w tle zawczasu.</summary>
     public static Task WarmupAsync(AssetManager assets) =>
-        GetAsync("class W : GameScript { void F() { Batch. } }", 39, assets);
+        GetAsync([new SourceFile("Warmup.cs", "class W : GameScript { void F() { Batch. } }")], "Warmup.cs", 39, assets);
 
     // Tagi Roslyna -> typy ikon w CodeMirror.
     static string KindOf(IReadOnlyList<string> tags) => tags.FirstOrDefault() switch

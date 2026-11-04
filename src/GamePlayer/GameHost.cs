@@ -13,6 +13,11 @@ public class GameHost : Game
     /// <summary>Typ skryptu do uruchomienia – ustawiany przez edytor przed startem GameActivity.</summary>
     public static Type? PendingScriptType;
 
+    /// <summary>Foldery z obrazkami uruchamianego projektu, w kolejności szukania.</summary>
+    public static string[] PendingImageDirs = [];
+
+    const double FpsWindowSeconds = 0.5;
+
     static string? _runtimeError;
 
     public static string? TakeRuntimeError() => Interlocked.Exchange(ref _runtimeError, null);
@@ -21,6 +26,8 @@ public class GameHost : Game
     SpriteBatch _batch = null!;
     Texture2D _pixel = null!;
     GameScript? _script;
+    double _fpsWindow;
+    int _fpsFrames;
 
     public GameHost(Activity activity)
     {
@@ -44,7 +51,7 @@ public class GameHost : Game
         Guard(() =>
         {
             _script = (GameScript)Activator.CreateInstance(PendingScriptType)!;
-            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage);
+            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage, ListImages, ReadAsset("fonts/DejaVuSans.ttf"));
             _script.Start();
         });
     }
@@ -91,8 +98,21 @@ public class GameHost : Game
         _batch.Draw(_pixel, center, null, Color.White * 0.8f, -MathHelper.PiOver4, origin, size, SpriteEffects.None, 0f);
     }
 
+    void CountFrame(GameTime gameTime)
+    {
+        _fpsFrames++;
+        _fpsWindow += gameTime.ElapsedGameTime.TotalSeconds;
+        if (_fpsWindow < FpsWindowSeconds)
+            return;
+
+        _script?.SetFps((float)(_fpsFrames / _fpsWindow));
+        _fpsFrames = 0;
+        _fpsWindow = 0;
+    }
+
     protected override void Draw(GameTime gameTime)
     {
+        CountFrame(gameTime);
         GraphicsDevice.Clear(_script?.Background ?? Color.Black);
         _batch.Begin();
         if (_script != null)
@@ -103,26 +123,44 @@ public class GameHost : Game
         base.Draw(gameTime);
     }
 
-    // Kolejność: pełna ścieżka, CsharpGame/images gracza, obrazki wbudowane w aplikację.
-    // Strumień musi być przewijalny, a strumienie z Assets nie są – kopiujemy do pamięci.
+
+    // Kolejność: pełna ścieżka albo foldery images projektu, potem obrazki wbudowane w aplikację.
     Stream OpenImage(string name)
     {
-        var userFile = Path.IsPathRooted(name) ? name : Path.Combine(GameFiles.ImagesDir(_activity), name);
-        if (File.Exists(userFile))
+        string[] candidates = Path.IsPathRooted(name) ? [name] : [.. PendingImageDirs.Select(dir => Path.Combine(dir, name))];
+        var userFile = candidates.FirstOrDefault(File.Exists);
+        if (userFile != null)
             return File.OpenRead(userFile);
 
         try
         {
-            using var asset = _activity.Assets!.Open("images/" + name);
-            var memory = new MemoryStream();
-            asset.CopyTo(memory);
-            memory.Position = 0;
-            return memory;
+            return new MemoryStream(ReadAsset("images/" + name));
         }
         catch (Java.IO.FileNotFoundException)
         {
             throw new FileNotFoundException($"Nie ma obrazka '{name}'.");
         }
+    }
+
+    // Ten sam obrazek może leżeć w projekcie i we wspólnym folderze: wygrywa pierwszy, jak w OpenImage.
+    IReadOnlyList<string> ListImages(string pattern)
+    {
+        var seen = new HashSet<string>();
+        var images = new List<string>();
+        foreach (var dir in PendingImageDirs.Where(Directory.Exists))
+            foreach (var file in Directory.EnumerateFiles(dir, pattern, SearchOption.AllDirectories).Order())
+                if (seen.Add(Path.GetFileName(file)))
+                    images.Add(Path.GetRelativePath(dir, file));
+        return images;
+    }
+
+    // Strumienie z Assets nie są przewijalne, a Texture2D.FromStream tego wymaga – czytamy do pamięci.
+    byte[] ReadAsset(string path)
+    {
+        using var asset = _activity.Assets!.Open(path);
+        using var memory = new MemoryStream();
+        asset.CopyTo(memory);
+        return memory.ToArray();
     }
 
     // Wyjątek w kodzie gracza nie może wywalić aplikacji: wracamy do edytora z opisem błędu.

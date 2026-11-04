@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace GamePlayer;
 
-public record ScriptDiagnostic(int From, int To, int Line, string Severity, string Message);
+public record ScriptDiagnostic(string File, int From, int To, int Line, string Severity, string Message);
 
 public record CompileResult(bool Ok, long Ms, string? Message, IReadOnlyList<ScriptDiagnostic> Diagnostics)
 {
@@ -58,32 +58,37 @@ public static class ScriptCompiler
 
     /// <summary>Pierwsza kompilacja jest wolna (JIT Roslyna), więc robimy ją w tle zawczasu.</summary>
     public static void Warmup(AssetManager assets) =>
-        Compile("class Warmup : GameScript { public override void Update(float dt) { } }", assets, load: false);
+        Compile([new SourceFile("Warmup.cs", "class Warmup : GameScript { public override void Update(float dt) { } }")], assets, load: false);
 
-    public static CompileResult Compile(string code, AssetManager assets, bool load = true)
+    public static CompileResult Compile(IReadOnlyList<SourceFile> sources, AssetManager assets, bool load = true)
     {
         lock (Gate)
         {
             var stopwatch = Stopwatch.StartNew();
             var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
-            var userTree = CSharpSyntaxTree.ParseText(code, parseOptions, path: "Game.cs");
+            var userTrees = sources.Select(s => CSharpSyntaxTree.ParseText(s.Text, parseOptions, path: s.Name)).ToList();
             var usingsTree = CSharpSyntaxTree.ParseText(GlobalUsings, parseOptions, path: "GlobalUsings.cs");
 
             var compilation = CSharpCompilation.Create(
                 $"UserGame{++_counter}",
-                [usingsTree, userTree],
+                [usingsTree, .. userTrees],
                 GetReferences(assets),
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Disable));
+                new CSharpCompilationOptions(
+                    OutputKind.DynamicallyLinkedLibrary,
+                    optimizationLevel: OptimizationLevel.Release,
+                    nullableContextOptions: NullableContextOptions.Disable));
 
             using var output = new MemoryStream();
             var emit = compilation.Emit(output);
 
             var diagnostics = emit.Diagnostics
-                .Where(d => d.Severity >= DiagnosticSeverity.Warning && d.Location.SourceTree == userTree)
+                .Where(d => d.Severity >= DiagnosticSeverity.Warning && d.Location.SourceTree is { } tree && tree != usingsTree)
+                .OrderByDescending(d => d.Severity)
                 .Select(d =>
                 {
                     var span = d.Location.SourceSpan;
                     return new ScriptDiagnostic(
+                        d.Location.SourceTree!.FilePath,
                         span.Start,
                         span.End,
                         d.Location.GetLineSpan().StartLinePosition.Line + 1,
@@ -95,7 +100,7 @@ public static class ScriptCompiler
             if (!emit.Success)
             {
                 // Błędy spoza kodu użytkownika (np. brak referencji) też muszą być widoczne.
-                var other = emit.Diagnostics.FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error && d.Location.SourceTree != userTree);
+                var other = emit.Diagnostics.FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error && (d.Location.SourceTree == null || d.Location.SourceTree == usingsTree));
                 return new CompileResult(false, stopwatch.ElapsedMilliseconds, other?.ToString(), diagnostics);
             }
 

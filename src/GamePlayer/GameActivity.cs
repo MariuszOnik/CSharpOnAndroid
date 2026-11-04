@@ -20,6 +20,7 @@ public class GameActivity : AndroidGameActivity
     protected override void OnCreate(Bundle? bundle)
     {
         base.OnCreate(bundle);
+        HideSystemBars();
 
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
             OnBackInvokedDispatcher.RegisterOnBackInvokedCallback(0, new BackCallback(Finish));
@@ -27,6 +28,29 @@ public class GameActivity : AndroidGameActivity
         _game = new GameHost(this);
         SetContentView((View)_game.Services.GetService(typeof(View))!);
         _game.Run();
+    }
+
+    public override void OnWindowFocusChanged(bool hasFocus)
+    {
+        base.OnWindowFocusChanged(hasFocus);
+        if (hasFocus)
+            HideSystemBars();
+    }
+
+    // Bufor gry ma rozmiar całego ekranu. Przy widocznych paskach MonoGame wpasowałby go w mniejszy obszar
+    // i po bokach zostałyby pasy (widać to na telefonach z przyciskami nawigacji).
+    void HideSystemBars()
+    {
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.P)
+        {
+            var attributes = Window!.Attributes!;
+            attributes.LayoutInDisplayCutoutMode = LayoutInDisplayCutoutMode.ShortEdges;
+            Window.Attributes = attributes;
+        }
+
+        Window!.DecorView.SystemUiVisibility = (StatusBarVisibility)(
+            SystemUiFlags.ImmersiveSticky | SystemUiFlags.HideNavigation | SystemUiFlags.Fullscreen
+            | SystemUiFlags.LayoutStable | SystemUiFlags.LayoutHideNavigation | SystemUiFlags.LayoutFullscreen);
     }
 
     protected override void OnDestroy()

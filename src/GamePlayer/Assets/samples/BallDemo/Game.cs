@@ -45,8 +45,6 @@ class MojaGra : GameScript
         // Piłka jest 40x40, a obrazek 64x64, więc skala 40/64.
         DrawImageCentered(obrazekPilki, pilka + new Vector2(20, 20), obrot, 40f / 64f);
 
-        // Licznik odbić jako kwadraciki u góry.
-        for (int i = 0; i < odbicia; i++)
-            FillRect(20 + i * 30, 60, 20, 20, Color.LimeGreen);
+        DrawText($"Odbicia: {odbicia}", 30, 60, 48, Color.LimeGreen);
     }
 }

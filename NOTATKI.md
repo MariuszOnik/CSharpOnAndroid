@@ -27,11 +27,27 @@ Plan techniczny:
 - Obrazki: PNG bez mgcb (`Texture2D.FromStream`) – z `Assets/images/` albo `files/images/` gracza
 - APK Release (bez AOT i trimmingu, ~58 MB) wysłane na telefon przez FTP do `Download/CsharpGamePlayer.apk`
 
+## Stan na 2026-11-04 – projekty, tekst i silnik izo natywnie ✅
+- Obejścia z refleksją z telefonu (`Tekst`, edytor w grze, Roslyn przez refleksję) zastąpione kodem w aplikacji
+- Projekty: `CsharpGame/projects/<nazwa>/*.cs` + `images/`, wspólne obrazki w `CsharpGame/images/`
+  (stare `Game.cs` i `projekt/` są kopiowane do projektów `Imported` i `projekt`, oryginały zostają)
+- Edytor: wybór projektu, zakładki plików, nowy/zmiana nazwy/usuwanie, lista błędów ze skokiem do pliku i linii,
+  podpowiedzi z całego projektu, wczytywanie zmian z dysku po powrocie do aplikacji
+- `GameApi`: `DrawText`, `DrawTextCentered`, `MeasureText` (FontStashSharp, DejaVu Sans), `JustTouched`, `JustReleased`, `Fps`, `ListImages`
+- `GameApi/Iso`: `IsoWorld`, `IsoObject`, `IsoSorter`, `IsoSprite` – zgodne ze starym kodem z telefonu (test porównawczy)
+- Kod gracza kompilowany z optymalizacją Release
+- Przykłady w `Assets/samples/`: `BallDemo`, `IsoStress` (klocki Kenneya, CC0)
+
 Pułapki, na które już trafiliśmy:
 - FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`
 - mgcb się wywalał → usunięty `MonoGame.Content.Builder.Task` (obrazki ładujemy z PNG)
 - Release: AOT wymaga trimmingu, a trimming psuje kod gracza → `RunAOTCompilation=false`
 - Android 15+: edge-to-edge → ręczne odsunięcie od pasków systemowych (`SystemBarsPadding`)
+- Telefon testowy Redmi 9A (Android 10, MIUI, 2 GB RAM) ma tylko 32-bitowego Androida → `RuntimeIdentifiers` zawiera `android-arm`
+- MIUI: `adb install` wymaga opcji „Instaluj przez USB”, a stukanie z ADB – „Debugowanie USB (ustawienia zabezpieczeń)”, które chce logowania na konto Mi.
+  Bez tego: `adb push` APK do `/sdcard/Download` i ręczna instalacja na telefonie
+- Build przyrostowy Release z marshal methods gubił metody → `UnsatisfiedLinkError` przy starcie → `AndroidEnableMarshalMethods=false`
+- Przy widocznych paskach systemowych MonoGame zwężał obraz → `GameActivity.HideSystemBars`
 
 ## Przydatne polecenia
 ```powershell
@@ -41,9 +57,11 @@ adb devices            # lista podłączonych urządzeń
 ```
 
 ## Następnym razem
-1. Test na prawdziwym telefonie (czas kompilacji Roslyna na ARM).
-2. IntelliSense: podpowiedzi po kropce (`CompletionService`).
-3. Wybór własnych obrazków z galerii telefonu → `files/images/`.
-4. Tekst na ekranie (czcionka bez mgcb, np. FontStashSharp).
-5. Kilka plików / projektów gry zamiast jednego `Game.cs`.
-6. Mniejsze APK: tylko `android-arm64`.
+0. Redmi 9A: zainstalować `Download/CsharpGamePlayer-naprawiony.apk` i sprawdzić start, pełny ekran (bez niebieskich pasów)
+   oraz „Sprawdź” w IsoStress. Poprzedni pomiar 48×48 przed poprawką: sort 1,7 ms, rysowanie 0,8 ms, 42 FPS, ok. 310 MB.
+1. Zmierzyć na telefonie czas kompilacji oraz IsoStress w trybach PROSTY i SZYBKI.
+2. Silnik izo: mapa z JSON-a, potem edytor mapy.
+3. Animowane sprite'y, A*, warstwy (podłoga, obiekty, efekty, UI), dźwięk.
+4. Wybór własnych obrazków z galerii telefonu → `images/` projektu.
+5. Mniejsze APK: tylko `android-arm64`.
+6. Port rdzenia izo do C na DS/3DS, gdy API się ustabilizuje.

@@ -3,6 +3,10 @@
     <TargetFramework>net10.0-android</TargetFramework>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
+    <!-- android-arm: tanie telefony mają często 32-bitowego Androida (np. Redmi 9A). android-x64: emulator. -->
+    <RuntimeIdentifiers>android-arm;android-arm64;android-x64</RuntimeIdentifiers>
+    <!-- Przy buildzie przyrostowym Release marshal methods gubiły metody i aplikacja padała z UnsatisfiedLinkError. -->
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationId>com.csharponandroid.gameplayer</ApplicationId>
