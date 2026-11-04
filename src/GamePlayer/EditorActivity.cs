@@ -20,11 +20,9 @@ namespace GamePlayer;
 )]
 public class EditorActivity : Activity
 {
-    static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     WebView _webView = null!;
-
-    internal string CodePath => Path.Combine(FilesDir!.AbsolutePath, "Game.cs");
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -43,8 +41,14 @@ public class EditorActivity : Activity
         root.SetOnApplyWindowInsetsListener(new SystemBarsPadding());
         SetContentView(root);
 
+        GameFiles.RequestPublicAccess(this);
+
         var assets = Assets!;
-        Task.Run(() => ScriptCompiler.Warmup(assets));
+        Task.Run(async () =>
+        {
+            ScriptCompiler.Warmup(assets);
+            await CodeCompletion.WarmupAsync(assets);
+        });
     }
 
     protected override void OnResume()
@@ -54,11 +58,10 @@ public class EditorActivity : Activity
             SendResult(new CompileResult(false, 0, "Błąd w trakcie gry: " + error, []));
     }
 
-    internal void SendResult(CompileResult result)
-    {
-        var json = JsonSerializer.Serialize(result, JsonOptions);
-        RunOnUiThread(() => _webView.EvaluateJavascript($"window.onCompileResult({json})", null));
-    }
+    internal void RunJs(string script) => RunOnUiThread(() => _webView.EvaluateJavascript(script, null));
+
+    internal void SendResult(CompileResult result) =>
+        RunJs($"window.onCompileResult({JsonSerializer.Serialize(result, JsonOptions)})");
 
     internal void StartGame(Type scriptType)
     {
@@ -87,11 +90,29 @@ class EditorBridge(EditorActivity activity) : Java.Lang.Object
     [Export("loadCode")]
     public string LoadCode()
     {
-        if (File.Exists(activity.CodePath))
-            return File.ReadAllText(activity.CodePath);
+        var path = GameFiles.CodePath(activity);
+        if (File.Exists(path))
+            return File.ReadAllText(path);
 
         using var reader = new StreamReader(activity.Assets!.Open("sample/Game.cs"));
         return reader.ReadToEnd();
+    }
+
+    /// <summary>Zwraca ścieżkę zapisanego pliku albo komunikat błędu.</summary>
+    [JavascriptInterface]
+    [Export("save")]
+    public string Save(string code)
+    {
+        try
+        {
+            var path = GameFiles.CodePath(activity);
+            File.WriteAllText(path, code);
+            return "Zapisano: " + path.Replace(Android.OS.Environment.ExternalStorageDirectory!.AbsolutePath, "/sdcard");
+        }
+        catch (Exception e)
+        {
+            return "Błąd zapisu: " + e.Message;
+        }
     }
 
     // Wywoływane na wątku mostka JavaScript, więc kompilacja nie blokuje UI.
@@ -99,7 +120,7 @@ class EditorBridge(EditorActivity activity) : Java.Lang.Object
     [Export("compile")]
     public void Compile(string code)
     {
-        File.WriteAllText(activity.CodePath, code);
+        Save(code);
         CompileResult result;
         try
         {
@@ -113,5 +134,27 @@ class EditorBridge(EditorActivity activity) : Java.Lang.Object
         activity.SendResult(result);
         if (result.ScriptType != null)
             activity.StartGame(result.ScriptType);
+    }
+
+    /// <summary>Podpowiedzi liczone w tle; wynik wraca przez window.onCompletions(id, wynik).</summary>
+    [JavascriptInterface]
+    [Export("complete")]
+    public void Complete(int id, string code, int position)
+    {
+        var assets = activity.Assets!;
+        Task.Run(async () =>
+        {
+            string json;
+            try
+            {
+                json = JsonSerializer.Serialize(await CodeCompletion.GetAsync(code, position, assets), EditorActivity.JsonOptions);
+            }
+            catch (Exception e)
+            {
+                Android.Util.Log.Error("GamePlayer", "Completion: " + e);
+                json = "null";
+            }
+            activity.RunJs($"window.onCompletions({id},{json})");
+        });
     }
 }

@@ -47,7 +47,8 @@ public abstract class GameScript
 
     /// <summary>
     /// Wczytuje obrazek PNG/JPG po nazwie, np. LoadImage("pilka.png").
-    /// Najpierw szuka we własnych obrazkach gracza, potem we wbudowanych.
+    /// Najpierw szuka w folderze /sdcard/CsharpGame/images, potem we wbudowanych.
+    /// Można też podać pełną ścieżkę, np. "/sdcard/Pictures/kot.png".
     /// </summary>
     public Texture2D LoadImage(string name)
     {

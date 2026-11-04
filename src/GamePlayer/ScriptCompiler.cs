@@ -22,7 +22,7 @@ public record CompileResult(bool Ok, long Ms, string? Message, IReadOnlyList<Scr
 /// </summary>
 public static class ScriptCompiler
 {
-    const string GlobalUsings = """
+    public const string GlobalUsings = """
         global using System;
         global using System.Collections.Generic;
         global using System.Linq;
@@ -36,10 +36,14 @@ public static class ScriptCompiler
     static List<MetadataReference>? _references;
     static int _counter;
 
-    static List<MetadataReference> GetReferences(AssetManager assets)
+    public static List<MetadataReference> GetReferences(AssetManager assets)
     {
-        if (_references != null)
-            return _references;
+        lock (Gate)
+            return _references ??= LoadReferences(assets);
+    }
+
+    static List<MetadataReference> LoadReferences(AssetManager assets)
+    {
 
         var references = new List<MetadataReference>();
         foreach (var name in assets.List("refs") ?? [])
@@ -49,7 +53,7 @@ public static class ScriptCompiler
             stream.CopyTo(memory);
             references.Add(MetadataReference.CreateFromImage(memory.ToArray(), filePath: name));
         }
-        return _references = references;
+        return references;
     }
 
     /// <summary>Pierwsza kompilacja jest wolna (JIT Roslyna), więc robimy ją w tle zawczasu.</summary>

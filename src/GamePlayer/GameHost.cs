@@ -57,35 +57,57 @@ public class GameHost : Game
             return;
         }
 
+        // GetState raz na klatkę: drugie wywołanie zmieniłoby stan Pressed na Moved.
+        var touches = TouchPanel.GetState();
+        foreach (var touch in touches)
+        {
+            if (touch.State == TouchLocationState.Pressed && ExitButton.Contains(touch.Position))
+            {
+                _activity.Finish();
+                return;
+            }
+        }
+
         if (_script != null)
         {
-            _script.SetTouches(TouchPanel.GetState());
+            _script.SetTouches(touches);
             Guard(() => _script.Update((float)gameTime.ElapsedGameTime.TotalSeconds));
         }
 
         base.Update(gameTime);
     }
 
+    /// <summary>Przycisk ✕ w prawym górnym rogu – powrót do edytora.</summary>
+    Rectangle ExitButton => new(GraphicsDevice.Viewport.Width - 140, 40, 100, 100);
+
+    void DrawExitButton()
+    {
+        var button = ExitButton;
+        _batch.Draw(_pixel, button, Color.Black * 0.4f);
+        var center = button.Center.ToVector2();
+        var origin = new Vector2(0.5f, 0.5f);
+        var size = new Vector2(60, 8);
+        _batch.Draw(_pixel, center, null, Color.White * 0.8f, MathHelper.PiOver4, origin, size, SpriteEffects.None, 0f);
+        _batch.Draw(_pixel, center, null, Color.White * 0.8f, -MathHelper.PiOver4, origin, size, SpriteEffects.None, 0f);
+    }
+
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(_script?.Background ?? Color.Black);
+        _batch.Begin();
         if (_script != null)
-        {
-            _batch.Begin();
             Guard(() => _script.Draw());
-            _batch.End();
-        }
+        DrawExitButton();
+        _batch.End();
 
         base.Draw(gameTime);
     }
 
-    /// <summary>Folder na własne obrazki gracza (na razie wgrywane ręcznie, np. przez adb).</summary>
-    public static string UserImagesDir(Activity activity) => Path.Combine(activity.FilesDir!.AbsolutePath, "images");
-
+    // Kolejność: pełna ścieżka, CsharpGame/images gracza, obrazki wbudowane w aplikację.
     // Strumień musi być przewijalny, a strumienie z Assets nie są – kopiujemy do pamięci.
     Stream OpenImage(string name)
     {
-        var userFile = Path.Combine(UserImagesDir(_activity), name);
+        var userFile = Path.IsPathRooted(name) ? name : Path.Combine(GameFiles.ImagesDir(_activity), name);
         if (File.Exists(userFile))
             return File.OpenRead(userFile);
 

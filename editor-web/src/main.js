@@ -1,19 +1,80 @@
 // Edytor kodu C# dla aplikacji GamePlayer.
 // Komunikacja z C#:
-//   JS -> C#: window.Android.loadCode(), window.Android.compile(code)
-//   C# -> JS: window.onCompileResult(json)
+//   JS -> C#: Android.loadCode(), Android.save(code), Android.compile(code), Android.complete(id, code, pos)
+//   C# -> JS: window.onCompileResult(json), window.onCompletions(id, json)
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { StreamLanguage, indentUnit } from "@codemirror/language";
+import { StreamLanguage, indentUnit, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { csharp } from "@codemirror/legacy-modes/mode/clike";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
-import { oneDark } from "@codemirror/theme-one-dark";
+import { oneDarkTheme } from "@codemirror/theme-one-dark";
+import { tags as t } from "@lezer/highlight";
 
 const bridge = window.Android;
 const status = document.getElementById("status");
 const playButton = document.getElementById("play");
+
+// Kolory składni bez czerwieni (One Dark ma czerwone zmienne i właściwości).
+const highlight = HighlightStyle.define([
+  { tag: [t.keyword, t.modifier, t.operatorKeyword, t.controlKeyword], color: "#c678dd" },
+  { tag: [t.typeName, t.className, t.namespace], color: "#e5c07b" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#61afef" },
+  { tag: [t.variableName, t.propertyName, t.name], color: "#d7dae0" },
+  { tag: [t.definition(t.variableName)], color: "#9fd3ff" },
+  { tag: [t.string, t.special(t.string), t.character], color: "#98c379" },
+  { tag: [t.number, t.bool, t.null, t.atom], color: "#d19a66" },
+  { tag: [t.operator, t.punctuation, t.bracket], color: "#abb2bf" },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: "#7f848e", fontStyle: "italic" },
+  { tag: [t.meta, t.annotation], color: "#56b6c2" },
+]);
+
+// --- IntelliSense: podpowiedzi liczy Roslyn po stronie C# ---
+let nextRequestId = 1;
+const pendingCompletions = new Map();
+
+window.onCompletions = (id, result) => {
+  const resolve = pendingCompletions.get(id);
+  if (!resolve) return;
+  pendingCompletions.delete(id);
+  resolve(result);
+};
+
+function roslynCompletions(context) {
+  if (!bridge) return null;
+  const word = context.matchBefore(/\w*/);
+  const afterDot = context.state.sliceDoc(word.from - 1, word.from) === ".";
+  if (!context.explicit && !afterDot && word.from === word.to) return null;
+
+  const id = nextRequestId++;
+  return new Promise((resolve) => {
+    pendingCompletions.set(id, resolve);
+    bridge.complete(id, context.state.doc.toString(), context.pos);
+  }).then((result) =>
+    result && result.options.length
+      ? {
+          from: result.from,
+          options: result.options.map((o) => ({ label: o.label, type: o.type, detail: o.detail ?? undefined })),
+          validFor: /^\w*$/,
+        }
+      : null
+  );
+}
+
+// --- Autozapis ---
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 1000);
+}
+function saveNow() {
+  clearTimeout(saveTimer);
+  if (bridge) setStatus(bridge.save(view.state.doc.toString()), "muted");
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") saveNow();
+});
 
 const view = new EditorView({
   parent: document.getElementById("editor"),
@@ -24,8 +85,13 @@ const view = new EditorView({
       keymap.of([indentWithTab]),
       indentUnit.of("    "),
       StreamLanguage.define(csharp),
+      EditorState.languageData.of(() => [{ autocomplete: roslynCompletions }]),
       lintGutter(),
-      oneDark,
+      oneDarkTheme,
+      syntaxHighlighting(highlight),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) scheduleSave();
+      }),
       EditorView.theme({ "&": { height: "100%" }, ".cm-scroller": { fontSize: "14px" } }),
     ],
   }),
@@ -38,6 +104,7 @@ function setStatus(text, kind) {
 
 playButton.addEventListener("click", () => {
   if (!bridge) return;
+  clearTimeout(saveTimer);
   playButton.disabled = true;
   setStatus("Kompiluję…");
   view.dispatch(setDiagnostics(view.state, []));
