@@ -60,6 +60,13 @@ Plan techniczny:
 - Przykład `Wiatrak3D`; modele i tekstury generuje skrypt (własne, bez obcych zasobów)
 - Parser OBJ i kamera sprawdzone testem na PC; rysowanie 3D **niesprawdzone jeszcze na telefonie**
 
+## 2026-11-11 – przykład Schron (gra w stylu Sheltered)
+- `Assets/samples/Schron/`: `Game.cs` (ekran, dotyk, panel), `Baza.cs` (schron), `Wyprawa.cs` (teren + walka turowa),
+  `Dane.cs`, `Grafika.cs`. Górna połowa ekranu = widok izo, dolna = interfejs (poziomo: lewa/prawa)
+- Grafika tylko z `IsoSprite.CreateBox` + `IsoSorter`; schron ma do 3 poziomów z włazami (dziury w podłodze) i drabinami
+- Sprawdzone na PC: kompilacja z atrapami MonoGame + losowe stukanie (bez wyjątków). **Na telefonie jeszcze nie uruchamiane**
+- Pomysły dalej: zapis gry (`ProjectFile`), napady na schron, handlarze, mgła wojny, więcej broni, dźwięk
+
 Pułapki, na które już trafiliśmy:
 - FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`
 - mgcb się wywalał → usunięty `MonoGame.Content.Builder.Task` (obrazki ładujemy z PNG)
