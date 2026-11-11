@@ -40,7 +40,7 @@ class Ocalaly
     public bool Wspina;
     public int CelWspinaczki;
 
-    public IsoObject Cialo, Glowa;
+    public Duszek Cialo;
 
     public string Opis()
     {

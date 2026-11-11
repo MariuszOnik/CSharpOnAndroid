@@ -17,7 +17,7 @@ class Jednostka
     public bool Alarm;
     public Lup CelLupu;
     public float Wzrost = 0.8f;
-    public IsoObject Cialo, Glowa;
+    public Duszek Cialo;
 
     public bool Zyje => Wrog ? Hp > 0 : Kto.Zyje;
     public bool WRuchu => WKroku || Sciezka.Count > 0;
@@ -81,13 +81,15 @@ class Wyprawa
                 if (p < 5) // skała
                 {
                     blok[x, y] = zaslona[x, y] = true;
-                    Scena.Dodaj(x + 0.1f, y + 0.1f, 0, 0.8f, 0.8f, 0.7f + los.Next(4) * 0.15f, new Color(120, 120, 124));
+                    Scena.DodajGlif("skala", Color.White, x + 0.1f, y + 0.1f, 0, 0.8f, 0.8f, 0.8f, piksel: 5 + los.Next(2));
                 }
-                else if (p < 10) // suche drzewo (nie zasłania)
+                else if (p < 10) // drzewo (nie zasłania)
                 {
                     blok[x, y] = true;
-                    Scena.Dodaj(x + 0.38f, y + 0.38f, 0, 0.24f, 0.24f, 1.1f, new Color(92, 70, 48));
-                    Scena.Dodaj(x + 0.15f, y + 0.15f, 1.1f, 0.7f, 0.7f, 0.5f, new Color(124, 118, 62));
+                    if (los.Next(3) == 0)
+                        Scena.DodajGlif("drzewo", Color.White, x + 0.3f, y + 0.3f, 0, 0.4f, 0.4f, 1.6f, piksel: 5);
+                    else
+                        Scena.DodajGlif("suche", Color.White, x + 0.3f, y + 0.3f, 0, 0.4f, 0.4f, 1.3f, piksel: 4.5f);
                 }
                 else if (p < 16) // ruina
                 {
@@ -120,8 +122,7 @@ class Wyprawa
         {
             var o = ludzie[i];
             var j = new Jednostka { Nazwa = o.Imie, Kto = o, MaxPa = 6, Pa = 6, ObrMin = 4, ObrMax = 8, Zasieg = 1 };
-            j.Cialo = Scena.Nowy(0.4f, 0.4f, 0.8f, o.Kolor, ruchomy: true);
-            j.Glowa = Scena.Nowy(0.3f, 0.3f, 0.3f, new Color(232, 190, 150), ruchomy: true);
+            j.Cialo = Scena.NowyGlif("czlowiek", o.Kolor, 0.4f, 0.4f, 1.1f, ruchomy: true);
             Wstaw(j, miejsca[i % miejsca.Length].Item1, miejsca[i % miejsca.Length].Item2);
             ekipa.Add(j);
         }
@@ -147,13 +148,12 @@ class Wyprawa
             case 0:
                 lup.Nazwa = "Skrzynia";
                 lup.Rzuty = 2;
-                lup.Bryly.Add(Scena.Dodaj(x + 0.2f, y + 0.2f, 0, 0.6f, 0.6f, 0.45f, new Color(176, 124, 60)));
+                lup.Bryly.Add(Scena.DodajGlif("skrzynia", Color.White, x + 0.2f, y + 0.2f, 0, 0.6f, 0.6f, 0.5f, piksel: 4));
                 break;
             case 1:
                 lup.Nazwa = "Wrak";
                 lup.Rzuty = 3;
-                lup.Bryly.Add(Scena.Dodaj(x + 0.05f, y + 0.2f, 0, 0.9f, 0.6f, 0.35f, new Color(160, 84, 50)));
-                lup.Bryly.Add(Scena.Dodaj(x + 0.3f, y + 0.25f, 0.35f, 0.45f, 0.5f, 0.25f, new Color(120, 150, 170)));
+                lup.Bryly.Add(Scena.DodajGlif("wrak", Color.White, x + 0.05f, y + 0.2f, 0, 0.9f, 0.6f, 0.6f, piksel: 4.5f));
                 break;
             default:
                 lup.Nazwa = "Dom";
@@ -172,22 +172,21 @@ class Wyprawa
         Jednostka w;
         if (rzut < 40)
         {
-            w = new Jednostka { Nazwa = "Zdziczały pies", MaxHp = 10, MaxPa = 8, ObrMin = 6, ObrMax = 12, Zasieg = 1, Wzrost = 0.4f };
-            w.Cialo = Scena.Nowy(0.6f, 0.3f, 0.4f, new Color(110, 80, 60), ruchomy: true);
+            w = new Jednostka { Nazwa = "Zdziczały pies", MaxHp = 10, MaxPa = 8, ObrMin = 6, ObrMax = 12, Zasieg = 1, Wzrost = 0.5f };
+            w.Cialo = Scena.NowyGlif("pies", new Color(150, 105, 70), 0.5f, 0.4f, 0.6f, ruchomy: true);
         }
         else if (rzut < 75)
         {
             w = new Jednostka { Nazwa = "Bandyta", MaxHp = 16, MaxPa = 5, ObrMin = 9, ObrMax = 16, Zasieg = 5 };
-            w.Cialo = Scena.Nowy(0.4f, 0.4f, 0.8f, new Color(150, 40, 40), ruchomy: true);
-            w.Glowa = Scena.Nowy(0.3f, 0.3f, 0.3f, new Color(60, 60, 60), ruchomy: true);
+            w.Cialo = Scena.NowyGlif("bandyta", new Color(150, 40, 40), 0.4f, 0.4f, 1.1f, ruchomy: true);
         }
         else
         {
-            w = new Jednostka { Nazwa = "Mutant", MaxHp = 28, MaxPa = 4, ObrMin = 14, ObrMax = 24, Zasieg = 1, Wzrost = 1.0f };
-            w.Cialo = Scena.Nowy(0.5f, 0.5f, 1.0f, new Color(90, 160, 90), ruchomy: true);
-            w.Glowa = Scena.Nowy(0.35f, 0.35f, 0.3f, new Color(120, 190, 110), ruchomy: true);
+            w = new Jednostka { Nazwa = "Mutant", MaxHp = 28, MaxPa = 4, ObrMin = 14, ObrMax = 24, Zasieg = 1, Wzrost = 1.2f };
+            w.Cialo = Scena.NowyGlif("mutant", new Color(90, 160, 90), 0.5f, 0.5f, 1.4f, piksel: 4, ruchomy: true);
         }
         w.Wrog = true;
+        w.Cialo.Odbity = true; // wrogowie patrzą w stronę wyjścia
         w.Hp = w.MaxHp;
         Wstaw(w, x, y);
         wrogowie.Add(w);
@@ -199,7 +198,6 @@ class Wyprawa
         j.Y = y;
         j.Poz = new Vector2(x + 0.5f, y + 0.5f);
         Scena.Obiekty.Add(j.Cialo);
-        if (j.Glowa != null) Scena.Obiekty.Add(j.Glowa);
         UstawBryly(j);
     }
 
@@ -207,8 +205,6 @@ class Wyprawa
     {
         var c = j.Cialo.Size;
         j.Cialo.Position = new Vector3(j.Poz.X - c.X / 2, j.Poz.Y - c.Y / 2, 0);
-        if (j.Glowa != null)
-            j.Glowa.Position = new Vector3(j.Poz.X - j.Glowa.Size.X / 2, j.Poz.Y - j.Glowa.Size.Y / 2, c.Z);
     }
 
     // ================= Mapa: zajętość, droga, widoczność =================
@@ -371,12 +367,15 @@ class Wyprawa
         {
             j.Poz = cel;
             j.WKroku = false;
+            j.Cialo.Podskok = 0;
             UstawBryly(j);
             PoKroku(j);
         }
         else
         {
             j.Poz += roznica / roznica.Length() * krok;
+            j.Cialo.Odbity = roznica.X - roznica.Y < 0; // w lewo na ekranie
+            j.Cialo.Podskok = MathF.Abs(MathF.Sin(g.Czas * 14)) * 2.5f;
             UstawBryly(j);
         }
     }
@@ -590,7 +589,6 @@ class Wyprawa
     void UsunBryly(Jednostka j)
     {
         Scena.Obiekty.Remove(j.Cialo);
-        if (j.Glowa != null) Scena.Obiekty.Remove(j.Glowa);
         Scena.Odswiez();
     }
 

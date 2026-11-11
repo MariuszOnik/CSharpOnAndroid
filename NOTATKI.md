@@ -64,6 +64,8 @@ Plan techniczny:
 - `Assets/samples/Schron/`: `Game.cs` (ekran, dotyk, panel), `Baza.cs` (schron), `Wyprawa.cs` (teren + walka turowa),
   `Dane.cs`, `Grafika.cs`. Górna połowa ekranu = widok izo, dolna = interfejs (poziomo: lewa/prawa)
 - Grafika tylko z `IsoSprite.CreateBox` + `IsoSorter`; schron ma do 3 poziomów z włazami (dziury w podłodze) i drabinami
+- Ludzie, wrogowie, drzewa, skały, skrzynie i wraki to glify jak w HeroesDS glyphtest: bitmapy-napisy w `Grafika.cs` (`Glify.Wzory`),
+  paleta 16 kolorów, `x`/`X` = kolor własny; klasa `Duszek : IsoObject` (bryła tylko do sortowania)
 - Sprawdzone na PC: kompilacja z atrapami MonoGame + losowe stukanie (bez wyjątków). **Na telefonie jeszcze nie uruchamiane**
 - Pomysły dalej: zapis gry (`ProjectFile`), napady na schron, handlarze, mgła wojny, więcej broni, dźwięk
 

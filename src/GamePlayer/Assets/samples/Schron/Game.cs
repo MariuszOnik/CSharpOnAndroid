@@ -1,4 +1,5 @@
-// SCHRON – przetrwanie w bunkrze, w rzucie izometrycznym. Cała grafika powstaje w kodzie (bryły z IsoSprite).
+// SCHRON – przetrwanie w bunkrze, w rzucie izometrycznym. Cała grafika powstaje w kodzie:
+// bryły z IsoSprite i glify (bitmapy zapisane napisami w Grafika.cs – tam zmienisz wygląd ludzi, wrogów i drzew).
 //
 // Górna połowa ekranu to gra, dolna to interfejs.
 //   Widok:  dotknij człowieka – wybór; dotknij urządzenia – użyj go; dotknij podłogi – idź tam.
@@ -20,6 +21,7 @@ class Schron : GameScript
     public Grafika Grafika;
     public Rectangle Widok, Panel; // górna połowa: gra, dolna: interfejs
     public float S = 1;            // skala interfejsu (panel projektowany na 720×800)
+    public float Czas;             // sekundy od startu – do animacji chodu
 
     Baza baza;
     Wyprawa wyprawa;
@@ -137,6 +139,7 @@ class Schron : GameScript
     public override void Update(float dt)
     {
         dt = Math.Min(dt, 0.1f);
+        Czas += dt;
         UstawEkran();
         ObsluzDotyk();
 

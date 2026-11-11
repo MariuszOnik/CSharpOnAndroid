@@ -43,8 +43,7 @@ class Baza
         for (int i = 0; i < g.Ludzie.Count; i++)
         {
             var o = g.Ludzie[i];
-            o.Cialo = Scena.Nowy(0.4f, 0.4f, 0.8f, o.Kolor, ruchomy: true);
-            o.Glowa = Scena.Nowy(0.3f, 0.3f, 0.3f, new Color(232, 190, 150), ruchomy: true);
+            o.Cialo = Scena.NowyGlif("czlowiek", o.Kolor, 0.4f, 0.4f, 1.1f, ruchomy: true);
             Ustaw(o, 1, 2.5f + i * 1.2f);
         }
         Wybrany = g.Ludzie[0];
@@ -82,10 +81,10 @@ class Baza
         // Powierzchnia z włazem
         Podloga(0, 4, Ziemia, DrabinaX(0));
         Scena.Dodaj(DrabinaX(0), 2.02f, 0, 1, 0.08f, 0.9f, Metal); // otwarta klapa
-        Scena.Dodaj(4.2f, 2.9f, 0, 0.25f, 0.25f, 1.3f, new Color(92, 70, 48)); // suche drzewo
-        Scena.Dodaj(3.95f, 2.65f, 1.3f, 0.75f, 0.75f, 0.5f, new Color(120, 112, 60));
-        Scena.Dodaj(6.3f, 2.4f, 0, 0.7f, 0.6f, 0.4f, new Color(120, 120, 120)); // głaz
-        Scena.Dodaj(2.6f, 3.2f, 0, 0.4f, 0.4f, 0.3f, new Color(105, 105, 110));
+        Scena.DodajGlif("drzewo", Color.White, 4.1f, 2.8f, 0, 0.4f, 0.4f, 1.6f, piksel: 5);
+        Scena.DodajGlif("suche", Color.White, 6.9f, 3.3f, 0, 0.3f, 0.3f, 1.2f, piksel: 4);
+        Scena.DodajGlif("skala", Color.White, 6.1f, 2.4f, 0, 0.6f, 0.5f, 0.4f, piksel: 4);
+        Scena.DodajGlif("skala", Color.White, 2.6f, 3.2f, 0, 0.4f, 0.4f, 0.3f, piksel: 3);
 
         for (int l = 1; l <= Poziomy; l++)
         {
@@ -104,7 +103,6 @@ class Baza
             if (o.Zyje && !o.NaWyprawie)
             {
                 Scena.Obiekty.Add(o.Cialo);
-                Scena.Obiekty.Add(o.Glowa);
                 UstawBryly(o);
             }
 
@@ -212,10 +210,16 @@ class Baza
 
     void UstawBryly(Ocalaly o)
     {
-        o.Cialo.Position = new Vector3(o.X - 0.2f, o.Y - 0.2f, o.Wys);
-        o.Glowa.Position = new Vector3(o.X - 0.15f, o.Y - 0.15f, o.Wys + 0.8f);
-        var kolor = o.Stan == Zajecie.Spi ? new Color(o.Kolor.R / 2, o.Kolor.G / 2, o.Kolor.B / 2) : o.Kolor;
-        o.Cialo.Color = kolor;
+        var c = o.Cialo;
+        // Kierunek patrzenia: w prawo na ekranie to rosnące X - Y.
+        float stary = c.Position.X - c.Position.Y, nowy = o.X - o.Y;
+        if (nowy > stary + 0.001f) c.Odbity = false;
+        else if (nowy < stary - 0.001f) c.Odbity = true;
+
+        c.Position = new Vector3(o.X - 0.2f, o.Y - 0.2f, o.Wys);
+        bool idzie = o.Stan == Zajecie.Idzie && !o.Wspina && Tempo > 0;
+        c.Podskok = idzie ? MathF.Abs(MathF.Sin(g.Czas * 12)) * 2.5f : 0;
+        c.Color = o.Stan == Zajecie.Spi ? new Color(120, 120, 150) : Color.White; // śpiący jest przyciemniony
     }
 
     void Zwolnij(Ocalaly o)
@@ -488,7 +492,6 @@ class Baza
         g.Log($"{o.Imie} umiera {powod}.");
         Zwolnij(o);
         Scena.Obiekty.Remove(o.Cialo);
-        Scena.Obiekty.Remove(o.Glowa);
         Scena.Odswiez();
         if (Wybrany == o) Wybrany = null;
         ekipa.Remove(o);
