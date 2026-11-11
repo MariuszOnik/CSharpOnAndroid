@@ -19,6 +19,7 @@ public record CompileResult(bool Ok, long Ms, string? Message, IReadOnlyList<Scr
 /// <summary>
 /// Kompiluje kod gry Roslynem na telefonie. Referencje (assembly .NET, MonoGame, GameApi)
 /// leżą w Assets/refs, bo na Androidzie assembly aplikacji nie są zwykłymi plikami na dysku.
+/// Do tego dochodzą biblioteki gracza z folderów libs – patrz <see cref="UserLibraries"/>.
 /// </summary>
 public static class ScriptCompiler
 {
@@ -34,25 +35,34 @@ public static class ScriptCompiler
 
     static readonly object Gate = new();
     static List<MetadataReference>? _references;
+    static HashSet<string> _builtInNames = [];
     static int _counter;
 
-    public static List<MetadataReference> GetReferences(AssetManager assets)
+    /// <summary>Referencje wbudowane w aplikację plus biblioteki gracza z podanych folderów libs.</summary>
+    public static List<MetadataReference> GetReferences(AssetManager assets, string[]? libDirs = null)
     {
         lock (Gate)
-            return _references ??= LoadReferences(assets);
+        {
+            _references ??= LoadReferences(assets);
+            if (libDirs == null || libDirs.Length == 0)
+                return _references;
+            return [.. _references, .. UserLibraries.GetReferences(libDirs, _builtInNames)];
+        }
     }
 
     static List<MetadataReference> LoadReferences(AssetManager assets)
     {
-
         var references = new List<MetadataReference>();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in assets.List("refs") ?? [])
         {
             using var stream = assets.Open("refs/" + name);
             using var memory = new MemoryStream();
             stream.CopyTo(memory);
             references.Add(MetadataReference.CreateFromImage(memory.ToArray(), filePath: name));
+            names.Add(Path.GetFileNameWithoutExtension(name));
         }
+        _builtInNames = names;
         return references;
     }
 
@@ -60,7 +70,8 @@ public static class ScriptCompiler
     public static void Warmup(AssetManager assets) =>
         Compile([new SourceFile("Warmup.cs", "class Warmup : GameScript { public override void Update(float dt) { } }")], assets, load: false);
 
-    public static CompileResult Compile(IReadOnlyList<SourceFile> sources, AssetManager assets, bool load = true)
+    /// <param name="libDirs">Foldery z bibliotekami gracza (GameFiles.LibDirs), najpierw projekt, potem wspólny.</param>
+    public static CompileResult Compile(IReadOnlyList<SourceFile> sources, AssetManager assets, string[]? libDirs = null, bool load = true)
     {
         lock (Gate)
         {
@@ -72,7 +83,7 @@ public static class ScriptCompiler
             var compilation = CSharpCompilation.Create(
                 $"UserGame{++_counter}",
                 [usingsTree, .. userTrees],
-                GetReferences(assets),
+                GetReferences(assets, libDirs),
                 new CSharpCompilationOptions(
                     OutputKind.DynamicallyLinkedLibrary,
                     optimizationLevel: OptimizationLevel.Release,
@@ -107,6 +118,8 @@ public static class ScriptCompiler
             if (!load)
                 return new CompileResult(true, stopwatch.ElapsedMilliseconds, null, diagnostics);
 
+            // Biblioteki gracza muszą być osiągalne już tutaj: GetTypes może sięgnąć po typy z nich.
+            UserLibraries.UseForRuntime(libDirs ?? []);
             var assembly = Assembly.Load(output.ToArray());
             var scriptTypes = assembly.GetTypes().Where(t => typeof(GameScript).IsAssignableFrom(t) && !t.IsAbstract).ToList();
             var message = scriptTypes.Count switch

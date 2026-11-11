@@ -60,6 +60,17 @@ Plan techniczny:
 - Przykład `Wiatrak3D`; modele i tekstury generuje skrypt (własne, bez obcych zasobów)
 - Parser OBJ i kamera sprawdzone testem na PC; rysowanie 3D **niesprawdzone jeszcze na telefonie**
 
+## 2026-11-11 – Biblioteki .dll gracza (bez przebudowy APK)
+- Foldery `CsharpGame/libs/` i `CsharpGame/projects/NazwaGry/libs/` (projekt wygrywa przy tej samej nazwie) – `GameFiles.LibDirs`
+- `UserLibraries`: referencje dla Roslyna (cache po ścieżce + dacie + rozmiarze, więc podpowiedzi nie przeliczają się bez potrzeby)
+  i ładowanie w grze przez `AppDomain.AssemblyResolve` → `AssemblyLoadContext.Default.LoadFromStream` (z bajtów, plik nie jest blokowany)
+- AssemblyResolve, bo kod gracza jest ładowany `Assembly.Load(byte[])` we własnym kontekście – `Default.Resolving` by go nie złapał
+- Pliki o nazwach wbudowanych w `Assets/refs` (np. `MonoGame.Framework.dll`) są pomijane
+- Raz załadowanej biblioteki nie da się wyładować – nowa wersja działa po restarcie aplikacji
+- Niesprawdzone jeszcze na telefonie
+- `GameScript.Content` (`ScriptContent : ContentManager`): `.xnb` z `content/` projektu, `CsharpGame/content/`, potem `Assets/content/`.
+  Host podaje `Game.Services` (GraphicsDevice) i `OpenContent`; `UnloadContent` przy wyjściu z gry. Budowanie `.xnb` tylko na PC (MGCB)
+
 Pułapki, na które już trafiliśmy:
 - FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`
 - mgcb się wywalał → usunięty `MonoGame.Content.Builder.Task` (obrazki ładujemy z PNG)

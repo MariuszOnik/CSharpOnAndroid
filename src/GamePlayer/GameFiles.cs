@@ -16,6 +16,10 @@ public record SourceFile(string Name, string Text);
 ///   CsharpGame/projects/NazwaGry/models/   – modele 3D tej gry (OBJ + MTL + tekstury)
 ///   CsharpGame/images/                     – obrazki wspólne dla wszystkich gier
 ///   CsharpGame/models/                     – modele wspólne dla wszystkich gier
+///   CsharpGame/projects/NazwaGry/libs/     – biblioteki .dll tej gry
+///   CsharpGame/projects/NazwaGry/content/  – pliki .xnb (Content.Load) tej gry
+///   CsharpGame/libs/                       – biblioteki .dll wspólne dla wszystkich gier
+///   CsharpGame/content/                    – pliki .xnb wspólne dla wszystkich gier
 /// Bez zgody na dostęp do plików używamy prywatnego folderu aplikacji.
 /// </summary>
 public static class GameFiles
@@ -96,6 +100,8 @@ public static class GameFiles
 
         Directory.CreateDirectory(Path.Combine(dir, "images"));
         Directory.CreateDirectory(Path.Combine(dir, "models"));
+        Directory.CreateDirectory(Path.Combine(dir, "libs"));
+        Directory.CreateDirectory(Path.Combine(dir, "content"));
         File.WriteAllText(Path.Combine(dir, "Game.cs"), NewProjectCode);
         return name;
     }
@@ -110,6 +116,14 @@ public static class GameFiles
     /// <summary>Foldery z modelami 3D gry (OBJ, MTL, tekstury), w kolejności szukania.</summary>
     public static string[] ModelDirs(Context context, string project) =>
         [Path.Combine(ProjectDir(context, project), "models"), Path.Combine(Root(context), "models")];
+
+    /// <summary>Foldery z plikami .xnb dla Content.Load, w kolejności szukania.</summary>
+    public static string[] ContentDirs(Context context, string project) =>
+        [Path.Combine(ProjectDir(context, project), "content"), Path.Combine(Root(context), "content")];
+
+    /// <summary>Foldery z bibliotekami .dll gry. Przy tej samej nazwie wygrywa biblioteka projektu.</summary>
+    public static string[] LibDirs(Context context, string project) =>
+        [Path.Combine(ProjectDir(context, project), "libs"), Path.Combine(Root(context), "libs")];
 
     // ---------- Pliki projektu ----------
 
@@ -196,6 +210,8 @@ public static class GameFiles
             Directory.CreateDirectory(projects);
             Directory.CreateDirectory(Path.Combine(root, "images"));
             Directory.CreateDirectory(Path.Combine(root, "models"));
+            Directory.CreateDirectory(Path.Combine(root, "libs"));
+            Directory.CreateDirectory(Path.Combine(root, "content"));
 
             var preferences = context.GetSharedPreferences(Preferences, FileCreationMode.Private)!;
             // Przykłady sprawdzamy przy każdym starcie, żeby nowe wersje aplikacji dokładały nowe przykłady.

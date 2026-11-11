@@ -83,7 +83,7 @@ class EditorBridge(EditorActivity activity) : Java.Lang.Object
         CompileResult result;
         try
         {
-            result = ScriptCompiler.Compile(GameFiles.ReadSources(activity, project), activity.Assets!);
+            result = ScriptCompiler.Compile(GameFiles.ReadSources(activity, project), activity.Assets!, GameFiles.LibDirs(activity, project));
         }
         catch (Exception e)
         {
@@ -107,7 +107,7 @@ class EditorBridge(EditorActivity activity) : Java.Lang.Object
             try
             {
                 var sources = GameFiles.ReadSources(activity, project).Where(s => s.Name != file).Append(new SourceFile(file, code)).ToList();
-                json = JsonSerializer.Serialize(await CodeCompletion.GetAsync(sources, file, position, assets), EditorActivity.JsonOptions);
+                json = JsonSerializer.Serialize(await CodeCompletion.GetAsync(sources, file, position, assets, GameFiles.LibDirs(activity, project)), EditorActivity.JsonOptions);
             }
             catch (Exception e)
             {

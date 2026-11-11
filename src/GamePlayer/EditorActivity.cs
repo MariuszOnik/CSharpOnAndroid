@@ -109,6 +109,7 @@ public class EditorActivity : Activity
         GameHost.PendingScriptType = scriptType;
         GameHost.PendingImageDirs = GameFiles.ImageDirs(this, project);
         GameHost.PendingModelDirs = GameFiles.ModelDirs(this, project);
+        GameHost.PendingContentDirs = GameFiles.ContentDirs(this, project);
         GameHost.PendingProjectFolder = GameFiles.ProjectFolder(this, project);
         RunOnUiThread(() => StartActivity(new Intent(this, typeof(GameActivity))));
     }
