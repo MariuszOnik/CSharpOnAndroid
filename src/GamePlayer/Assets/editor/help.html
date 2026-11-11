@@ -52,6 +52,7 @@
   <li><a href="#modele">Modele 3D</a></li>
   <li><a href="#pliki">Pliki, zapis, dźwięk</a></li>
   <li><a href="#biblioteki">Biblioteki .dll</a></li>
+  <li><a href="#content">Content.Load (.xnb)</a></li>
   <li><a href="#brak">Czego nie ma</a></li>
   <li><a href="#bledy">Błędy i pułapki</a></li>
   <li><a href="#sciaga">Ściągawka</a></li>
@@ -713,10 +714,34 @@ ich <code>.dll</code> też muszą być w <code>libs</code>. Brak zależności da
 </ul>
 
 <!-- ============================================================ -->
+<h2 id="content">13c. Content.Load (.xnb) <span class="maybe">(niesprawdzone na telefonie)</span></h2>
+<p>Pliki <code>.xnb</code> zbudowane na PC narzędziem <b>MGCB</b> (MonoGame Content Builder) wrzuć do folderu
+<code>content/</code> projektu albo do wspólnego <code>CsharpGame/content/</code>. Wczytujesz je w <code>Start</code>:</p>
+<pre><code>SpriteFont czcionka;
+Effect fala;
+
+public override void Start()
+{
+    czcionka = Content.Load&lt;SpriteFont&gt;("czcionka");     // content/czcionka.xnb
+    fala = Content.Load&lt;Effect&gt;("shadery/fala");         // content/shadery/fala.xnb
+}
+
+public override void Draw()
+{
+    Batch.DrawString(czcionka, "Witaj", new Vector2(40, 40), Color.White);
+}</code></pre>
+<ul>
+  <li>Nazwa bez <code>.xnb</code>, względem folderu <code>content/</code>. Ten sam plik wczytany drugi raz wraca z pamięci.</li>
+  <li>Budując w MGCB wybierz platformę <b>Android</b> (albo DesktopGL). Shadery (<code>Effect</code>) muszą być zbudowane pod OpenGL.</li>
+  <li>Na telefonie <b>nie da się</b> budować <code>.xnb</code> – tylko je wczytywać. Do zwykłych obrazków wygodniejsze jest <code>LoadImage</code>, a do tekstu <code>DrawText</code>.</li>
+  <li>Typy z bibliotek (np. MonoGame.Extended) wczytasz, jeśli ich <code>.dll</code> leży w <a href="#biblioteki"><code>libs</code></a>.</li>
+</ul>
+
+<!-- ============================================================ -->
 <h2 id="brak">14. Czego nie ma</h2>
 <ul>
-  <li><b>Content Pipeline</b> – <code>Content.Load</code>, pliki <code>.xnb</code>, <code>SpriteFont</code>. Obrazki: <code>LoadImage</code>, tekst: <code>DrawText</code>.</li>
-  <li><b>Własne shadery</b> – nie ma kompilatora efektów. Zostają wbudowane (<code>BasicEffect</code> itd.) i <code>BlendState</code>.</li>
+  <li><b>Budowanie Content Pipeline na telefonie</b> – gotowe <code>.xnb</code> z PC wczytasz przez <a href="#content"><code>Content.Load</code></a>, ale zbudować ich tu nie można.</li>
+  <li><b>Kompilator shaderów na telefonie</b> – własny shader zbuduj na PC do <code>.xnb</code> i wczytaj <code>Content.Load&lt;Effect&gt;</code>.</li>
   <li><b>Dostęp do obiektu <code>Game</code></b> – nie wyjdziesz z gry kodem (<code>Exit()</code>), nie zmienisz liczby klatek. Wyjście: ✕ albo Wstecz.</li>
   <li><b>Klawiatura, mysz, pad</b> – tylko dotyk.</li>
   <li><b>Komponenty MonoGame</b> (<code>GameComponent</code>, <code>DrawableGameComponent</code>) – zamiast nich wzorzec z <a href="#klasy">rozdziału 4</a>.</li>

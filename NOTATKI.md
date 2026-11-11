@@ -68,6 +68,8 @@ Plan techniczny:
 - Pliki o nazwach wbudowanych w `Assets/refs` (np. `MonoGame.Framework.dll`) są pomijane
 - Raz załadowanej biblioteki nie da się wyładować – nowa wersja działa po restarcie aplikacji
 - Niesprawdzone jeszcze na telefonie
+- `GameScript.Content` (`ScriptContent : ContentManager`): `.xnb` z `content/` projektu, `CsharpGame/content/`, potem `Assets/content/`.
+  Host podaje `Game.Services` (GraphicsDevice) i `OpenContent`; `UnloadContent` przy wyjściu z gry. Budowanie `.xnb` tylko na PC (MGCB)
 
 Pułapki, na które już trafiliśmy:
 - FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`

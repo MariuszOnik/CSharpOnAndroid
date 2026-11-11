@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input.Touch;
 
@@ -298,6 +299,15 @@ public abstract class GameScript
     static bool Repeats(Texture2D texture) =>
         (texture.Width & (texture.Width - 1)) == 0 && (texture.Height & (texture.Height - 1)) == 0;
 
+    // ---------- Content Pipeline (.xnb) ----------
+
+    /// <summary>
+    /// Wczytuje pliki .xnb zbudowane na PC narzędziem MGCB, np. Content.Load&lt;SpriteFont&gt;("czcionka")
+    /// albo Content.Load&lt;Effect&gt;("shadery/fala"). Nazwa bez .xnb, względem folderu content/.
+    /// Szuka w content/ projektu, potem we wspólnym CsharpGame/content, potem we wbudowanych.
+    /// </summary>
+    public ContentManager Content { get; private set; } = null!;
+
     // ---------- Pliki ----------
 
     /// <summary>Folder bieżącego projektu, np. /sdcard/CsharpGame/projects/MojaGra.</summary>
@@ -317,8 +327,10 @@ public abstract class GameScript
     TextRenderer _text = null!;
 
     internal void Attach(GraphicsDevice device, SpriteBatch batch, Texture2D pixel,
-        Func<string, Stream> openImage, Func<string, IReadOnlyList<string>> listImages, Func<string, Stream> openModel, byte[] font)
+        Func<string, Stream> openImage, Func<string, IReadOnlyList<string>> listImages, Func<string, Stream> openModel, byte[] font,
+        IServiceProvider services, Func<string, Stream> openContent)
     {
+        Content = new ScriptContent(services, openContent);
         GraphicsDevice = device;
         Batch = batch;
         Pixel = pixel;
@@ -327,6 +339,9 @@ public abstract class GameScript
         _openModel = openModel;
         _text = new TextRenderer(font);
     }
+
+    /// <summary>Zwalnia to, co wczytał Content (wołane przez hosta przy wyjściu z gry).</summary>
+    internal void UnloadContent() => Content?.Unload();
 
     internal void SetTouches(TouchCollection touches) => Touches = touches;
 

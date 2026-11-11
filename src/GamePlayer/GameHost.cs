@@ -19,6 +19,9 @@ public class GameHost : Game
     /// <summary>Foldery z modelami 3D uruchamianego projektu, w kolejności szukania.</summary>
     public static string[] PendingModelDirs = [];
 
+    /// <summary>Foldery z plikami .xnb (Content Pipeline) uruchamianego projektu, w kolejności szukania.</summary>
+    public static string[] PendingContentDirs = [];
+
     /// <summary>Folder uruchamianego projektu.</summary>
     public static string PendingProjectFolder = "";
 
@@ -57,7 +60,8 @@ public class GameHost : Game
         Guard(() =>
         {
             _script = (GameScript)Activator.CreateInstance(PendingScriptType)!;
-            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage, ListImages, OpenModel, ReadAsset("fonts/DejaVuSans.ttf"));
+            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage, ListImages, OpenModel, ReadAsset("fonts/DejaVuSans.ttf"),
+                Services, OpenContent);
             _script.SetProjectFolder(PendingProjectFolder);
             _script.Start();
         });
@@ -139,6 +143,14 @@ public class GameHost : Game
     Stream OpenImage(string name) => OpenFile(PendingImageDirs, "images/", name, "obrazka");
 
     Stream OpenModel(string name) => OpenFile(PendingModelDirs, "models/", name, "pliku modelu");
+
+    Stream OpenContent(string name) => OpenFile(PendingContentDirs, "content/", name, "pliku content");
+
+    protected override void UnloadContent()
+    {
+        _script?.UnloadContent();
+        base.UnloadContent();
+    }
 
     // Kolejność: pełna ścieżka albo foldery projektu, potem pliki wbudowane w aplikację.
     Stream OpenFile(string[] dirs, string assetFolder, string name, string what)
