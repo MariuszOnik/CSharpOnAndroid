@@ -30,3 +30,15 @@ SOFTWARE.
 
 ## Isometric Buildings (Kenney)
 `src/GamePlayer/Assets/samples/IsoStress/images/` – Kenney Vleugels (www.kenney.nl), licencja CC0.
+
+## Grass and Water Tiles (Clint Bellanger)
+`grass_and_water.png` w `src/GamePlayer/Assets/editor/` i `src/GamePlayer/Assets/samples/IsoEditor/images/` –
+autor: Clint Bellanger, licencja CC-BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Źródło: https://opengameart.org/content/grass-and-water-tiles
+
+## Pixel farm and shack (pixel32)
+`src/GamePlayer/Assets/editor/crops_tileset.png` – autor: pixel32.
+Źródło i licencja: https://opengameart.org/content/pixel-farm-and-shack
+
+`farma.png` (w `src/GamePlayer/Assets/editor/` i `src/GamePlayer/Assets/samples/IsoEditor/images/`) to przeróbka
+`crops_tileset.png`: usunięte białe tło, kafle przepakowane do siatki 36×48.

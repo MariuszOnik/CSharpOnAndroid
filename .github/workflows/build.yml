@@ -43,12 +43,26 @@ jobs:
           -p:AcceptAndroidSDKLicenses=True -v:minimal
 
       # ApkAbi zamiast RuntimeIdentifiers - patrz komentarz w GamePlayer.csproj.
+      # Staly klucz z sekretow repo: APK z kolejnych buildow da sie instalowac jako aktualizacje.
+      # Bez sekretow (np. PR z forka) build podpisuje sie kluczem debugowym.
       - name: Build Release
-        run: >
-          dotnet build src/GamePlayer/GamePlayer.csproj -c Release
-          "-p:ApkAbi=${{ matrix.abi }}"
-          "-p:AndroidSdkDirectory=$env:ANDROID_HOME" "-p:JavaSdkDirectory=$env:JAVA_HOME"
-          -v:minimal
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          $sign = @()
+          if ($env:KEYSTORE_BASE64) {
+            $ks = Join-Path $env:RUNNER_TEMP "release.keystore"
+            [IO.File]::WriteAllBytes($ks, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+            $sign = "-p:AndroidKeyStore=true", "-p:AndroidSigningKeyStore=$ks",
+                    "-p:AndroidSigningKeyAlias=csharpgameplayer",
+                    "-p:AndroidSigningStorePass=env:KEYSTORE_PASSWORD", "-p:AndroidSigningKeyPass=env:KEYSTORE_PASSWORD"
+            Write-Host "Podpis: klucz z sekretow repo"
+          } else {
+            Write-Host "::warning::Brak sekretu ANDROID_KEYSTORE_BASE64 - APK podpisany kluczem debugowym"
+          }
+          dotnet build src/GamePlayer/GamePlayer.csproj -c Release "-p:ApkAbi=${{ matrix.abi }}" "-p:AndroidSdkDirectory=$env:ANDROID_HOME" "-p:JavaSdkDirectory=$env:JAVA_HOME" -v:minimal @sign
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Nazwa APK
         run: |
