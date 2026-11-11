@@ -51,6 +51,7 @@
   <li><a href="#iso">Silnik izometryczny</a></li>
   <li><a href="#modele">Modele 3D</a></li>
   <li><a href="#pliki">Pliki, zapis, dźwięk</a></li>
+  <li><a href="#biblioteki">Biblioteki .dll</a></li>
   <li><a href="#brak">Czego nie ma</a></li>
   <li><a href="#bledy">Błędy i pułapki</a></li>
   <li><a href="#sciaga">Ściągawka</a></li>
@@ -691,6 +692,25 @@ using (var s = File.OpenRead(ProjectFile("skok.wav")))
     skok = SoundEffect.FromStream(s);     // tylko WAV (PCM)
 // gdy trzeba:
 skok.Play();                               // albo skok.Play(glosnosc, wysokosc, panorama)</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="biblioteki">13b. Biblioteki .dll <span class="maybe">(niesprawdzone na telefonie)</span></h2>
+<p>Gotowe biblioteki C# (np. z NuGet) dodajesz bez przebudowy aplikacji – wrzuć pliki <code>.dll</code> do folderu:</p>
+<ul>
+  <li><code>CsharpGame/libs/</code> – dla wszystkich gier,</li>
+  <li><code>CsharpGame/projects/NazwaGry/libs/</code> – tylko dla tej gry (przy tej samej nazwie wygrywa ta).</li>
+</ul>
+<p>Kompilator i podpowiedzi widzą je od razu, a gra ładuje je, gdy pierwszy raz ich użyje. Dopisz tylko <code>using</code> z przestrzeni nazw biblioteki.</p>
+<p>Skąd wziąć <code>.dll</code>: paczka <code>.nupkg</code> z nuget.org to zwykły ZIP – zmień rozszerzenie na <code>.zip</code>
+i weź plik z <code>lib/netstandard2.0/</code> albo <code>lib/net8.0/</code> (lub innego <code>net6+</code>).</p>
+<div class="warn"><b>Wrzuć też zależności.</b> Jeśli biblioteka korzysta z innych paczek NuGet (lista „Dependencies” na nuget.org),
+ich <code>.dll</code> też muszą być w <code>libs</code>. Brak zależności daje błąd kompilacji albo <code>FileNotFoundException</code> w trakcie gry.</div>
+<ul>
+  <li>Działa tylko czysty .NET: <b>bez</b> natywnych plików <code>.so</code>, bez Windows/WPF i bez <code>Content.Load</code>/<code>.xnb</code>.</li>
+  <li><code>MonoGame.Framework.dll</code> z <code>libs</code> jest pomijany – zawsze używana jest wersja z aplikacji.</li>
+  <li>Podmieniona biblioteka (np. nowa wersja przez FTP) zadziała w grze dopiero po ponownym uruchomieniu aplikacji –
+    raz załadowanej nie da się wyładować.</li>
+</ul>
 
 <!-- ============================================================ -->
 <h2 id="brak">14. Czego nie ma</h2>

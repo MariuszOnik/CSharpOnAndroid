@@ -23,6 +23,7 @@ public static class CodeCompletion
     static AdhocWorkspace? _workspace;
     static ProjectId? _projectId;
     static Solution? _solution;
+    static List<MetadataReference> _references = [];
 
     static void Init(AssetManager assets)
     {
@@ -43,6 +44,16 @@ public static class CodeCompletion
         _workspace.AddDocument(project.Id, "GlobalUsings.cs", SourceText.From(ScriptCompiler.GlobalUsings));
         _projectId = project.Id;
         _solution = _workspace.CurrentSolution;
+    }
+
+    // Biblioteki z libs mogą się zmienić między zapytaniami (inny projekt, nowy plik przez FTP).
+    // Te same pliki dają te same obiekty referencji, więc zwykle nic tu nie robimy.
+    static void SyncReferences(List<MetadataReference> references)
+    {
+        if (references.SequenceEqual(_references, ReferenceEqualityComparer.Instance))
+            return;
+        _references = references;
+        _solution = _solution!.WithProjectMetadataReferences(_projectId!, references);
     }
 
     static async Task SyncAsync(IReadOnlyList<SourceFile> sources)
@@ -70,12 +81,14 @@ public static class CodeCompletion
 
     /// <param name="sources">Pliki projektu, w tym otwarty plik z aktualnym tekstem z edytora.</param>
     /// <param name="file">Nazwa pliku, w którym stoi kursor.</param>
-    public static async Task<CompletionResult> GetAsync(IReadOnlyList<SourceFile> sources, string file, int position, AssetManager assets)
+    /// <param name="libDirs">Foldery z bibliotekami gracza, żeby podpowiadać też ich typy.</param>
+    public static async Task<CompletionResult> GetAsync(IReadOnlyList<SourceFile> sources, string file, int position, AssetManager assets, string[]? libDirs = null)
     {
         await Gate.WaitAsync();
         try
         {
             Init(assets);
+            SyncReferences(ScriptCompiler.GetReferences(assets, libDirs));
             await SyncAsync(sources);
 
             var document = _solution!.GetDocument(Documents[file])!;
