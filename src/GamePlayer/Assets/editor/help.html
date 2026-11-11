@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pomoc GameScript</title>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { margin: 0; padding: 12px 14px 60px; background: #282c34; color: #abb2bf; font: 15px/1.55 sans-serif; }
+    h1 { margin: 4px 0 10px; font-size: 22px; color: #e5c07b; }
+    h2 { margin: 28px 0 8px; padding-top: 8px; border-top: 1px solid #3a404b; font-size: 19px; color: #61afef; }
+    h3 { margin: 18px 0 6px; font-size: 16px; color: #d7dae0; }
+    p, li { max-width: 760px; }
+    a { color: #56b6c2; }
+    code { padding: 1px 4px; background: #21252b; border-radius: 4px; color: #e5c07b; font: 13.5px monospace; }
+    pre { margin: 8px 0; padding: 10px; overflow-x: auto; background: #1d2026; border-radius: 6px; border-left: 3px solid #3a9b4c; }
+    pre code { padding: 0; background: none; color: #d7dae0; font-size: 13px; line-height: 1.45; }
+    table { border-collapse: collapse; width: 100%; max-width: 760px; font-size: 14px; }
+    td, th { padding: 6px 8px; border-bottom: 1px solid #3a404b; vertical-align: top; text-align: left; }
+    th { color: #d7dae0; }
+    td:first-child { white-space: nowrap; }
+    .note { padding: 8px 10px; background: #2c313a; border-left: 3px solid #e5c07b; border-radius: 4px; }
+    .warn { padding: 8px 10px; background: #2c313a; border-left: 3px solid #e06c75; border-radius: 4px; }
+    .ok { color: #98c379; } .no { color: #e06c75; } .maybe { color: #d19a66; }
+    nav { display: flex; gap: 8px; margin-bottom: 10px; }
+    nav a { padding: 6px 12px; background: #3a404b; color: #d7dae0; border-radius: 6px; text-decoration: none; font-size: 14px; }
+    nav a.active { background: #3a9b4c; color: #fff; }
+    #toc { columns: 2; column-gap: 16px; padding-left: 20px; font-size: 14px; }
+    @media (max-width: 420px) { #toc { columns: 1; } }
+  </style>
+</head>
+<body>
+<nav><a class="active" href="help.html">Poradnik API</a><a href="help-iso.html">Tutorial 2: edytor mapy izo</a></nav>
+<h1>Poradnik GameScript</h1>
+<p>Piszesz grę w C#, przycisk <b>▶ Graj</b> kompiluje cały projekt (wszystkie pliki <code>.cs</code>) i ją uruchamia.
+✕ w prawym górnym rogu albo Wstecz wraca do edytora.</p>
+
+<ol id="toc">
+  <li><a href="#start">Pierwsza gra</a></li>
+  <li><a href="#cykl">Cykl życia: Start, Update, Draw</a></li>
+  <li><a href="#wejscie">Jeden punkt wejścia</a></li>
+  <li><a href="#klasy">Wiele klas i plików</a></li>
+  <li><a href="#ekran">Ekran, kolory, współrzędne</a></li>
+  <li><a href="#rysowanie">Prostokąty i linie</a></li>
+  <li><a href="#obrazki">Obrazki</a></li>
+  <li><a href="#sprite">Sprite'y: atlas, pivot, animacja</a></li>
+  <li><a href="#tekst">Tekst</a></li>
+  <li><a href="#dotyk">Dotyk</a></li>
+  <li><a href="#matma">Wektory, kolizje, losowanie</a></li>
+  <li><a href="#monogame">Więcej z MonoGame</a></li>
+  <li><a href="#iso">Silnik izometryczny</a></li>
+  <li><a href="#pliki">Pliki, zapis, dźwięk</a></li>
+  <li><a href="#brak">Czego nie ma</a></li>
+  <li><a href="#bledy">Błędy i pułapki</a></li>
+  <li><a href="#sciaga">Ściągawka</a></li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="start">1. Pierwsza gra</h2>
+<pre><code>class MojaGra : GameScript
+{
+    Vector2 kulka;
+
+    public override void Start()
+    {
+        Background = Color.DarkSlateBlue;
+        kulka = new Vector2(Width / 2, Height / 2);
+    }
+
+    public override void Update(float dt)
+    {
+        if (IsTouching)
+            kulka = TouchPosition;   // kulka idzie za palcem
+    }
+
+    public override void Draw()
+    {
+        FillRect(kulka.X - 40, kulka.Y - 40, 80, 80, Color.Orange);
+        DrawText("Dotknij ekranu", 30, 60, 48, Color.White);
+    }
+}</code></pre>
+<p>Nie musisz pisać <code>using</code> dla najczęstszych przestrzeni nazw – są dodane automatycznie:</p>
+<pre><code>System, System.Collections.Generic, System.Linq,
+Microsoft.Xna.Framework, Microsoft.Xna.Framework.Graphics,
+Microsoft.Xna.Framework.Input.Touch, GameApi</code></pre>
+<p>Inne dopisz na górze pliku, np. <code>using System.IO;</code>, <code>using System.Diagnostics;</code>,
+<code>using Microsoft.Xna.Framework.Audio;</code>.</p>
+
+<!-- ============================================================ -->
+<h2 id="cykl">2. Cykl życia: Start, Update, Draw</h2>
+<table>
+  <tr><th>Metoda</th><th>Kiedy</th><th>Do czego</th></tr>
+  <tr><td><code>Start()</code></td><td>raz, na początku</td><td>wczytanie obrazków, utworzenie obiektów, ustawienie tła. <code>Width</code>/<code>Height</code> już działają.</td></tr>
+  <tr><td><code>Update(float dt)</code></td><td>ok. 60 razy na sekundę</td><td>logika: ruch, dotyk, kolizje, punkty. <code>dt</code> = sekundy od poprzedniej klatki (zwykle ~0,0167).</td></tr>
+  <tr><td><code>Draw()</code></td><td>po Update, gdy jest czas na rysowanie</td><td>tylko rysowanie. Ekran jest już wyczyszczony kolorem <code>Background</code>.</td></tr>
+</table>
+<ul>
+  <li><b>Ruch mnóż przez <code>dt</code></b>: <code>x += 300 * dt;</code> to 300 pikseli na sekundę niezależnie od FPS.</li>
+  <li>Gdy telefon nie wyrabia, MonoGame wywołuje kilka razy <code>Update</code> i pomija <code>Draw</code>. Dlatego w <code>Draw</code> nie zmieniaj stanu gry (nie licz punktów, nie przesuwaj obiektów).</li>
+  <li>Kolejność rysowania = kolejność wywołań: to, co narysujesz później, jest na wierzchu.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="wejscie">3. Jeden punkt wejścia</h2>
+<p><b>Tak – gra ma dokładnie jeden punkt wejścia:</b> jedną klasę dziedziczącą po <code>GameScript</code>.
+Aplikacja tworzy jej obiekt i to tylko jej <code>Start</code>, <code>Update</code> i <code>Draw</code> wywołuje sama.</p>
+<ul>
+  <li>Brak takiej klasy → błąd „Brak klasy dziedziczącej po GameScript”.</li>
+  <li>Dwie takie klasy (nawet w różnych plikach) → błąd „Więcej niż jedna klasa dziedziczy po GameScript”.</li>
+  <li>Nazwa klasy i pliku nie ma znaczenia.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="klasy">4. Wiele klas i plików</h2>
+<p><b>Każda klasa może mieć własne <code>Update</code> i <code>Draw</code></b>, ale nikt ich nie wywoła automatycznie.
+Wywołujesz je sam z głównej klasy. Takie klasy <u>nie</u> dziedziczą po <code>GameScript</code> – to zwykłe klasy C#.
+Plików może być dowolnie wiele (zakładka <b>+</b>), wszystkie są kompilowane razem.</p>
+
+<h3>Sposób A: przekaż grę w konstruktorze</h3>
+<pre><code>// Gracz.cs
+class Gracz
+{
+    readonly GameScript gra;
+    public Vector2 Pozycja;
+
+    public Gracz(GameScript gra)
+    {
+        this.gra = gra;
+        Pozycja = new Vector2(gra.Width / 2, gra.Height - 200);
+    }
+
+    public void Update(float dt)
+    {
+        if (gra.IsTouching)
+            Pozycja = Vector2.Lerp(Pozycja, gra.TouchPosition, 10 * dt);
+    }
+
+    public void Draw() => gra.FillRect(Pozycja.X - 50, Pozycja.Y - 20, 100, 40, Color.Orange);
+}
+
+// Gra.cs – jedyny punkt wejścia
+class Gra : GameScript
+{
+    Gracz gracz;
+
+    public override void Start() => gracz = new Gracz(this);
+    public override void Update(float dt) => gracz.Update(dt);
+    public override void Draw() => gracz.Draw();
+}</code></pre>
+
+<h3>Sposób B: lista obiektów ze wspólną klasą bazową (polecany)</h3>
+<p>Mini system obiektów: każdy obiekt ma swoje <code>Update</code>/<code>Draw</code>, a gra obsługuje całą listę.</p>
+<pre><code>// Obiekt.cs
+abstract class Obiekt
+{
+    public static Gra Gra;          // ustawiane w Gra.Start – dostęp do rysowania i dotyku
+    public Vector2 Pozycja;
+    public bool DoUsuniecia;
+
+    public virtual void Update(float dt) { }
+    public virtual void Draw() { }
+}
+
+// Pocisk.cs
+class Pocisk : Obiekt
+{
+    public Vector2 Predkosc = new Vector2(0, -900);
+
+    public override void Update(float dt)
+    {
+        Pozycja += Predkosc * dt;
+        if (Pozycja.Y &lt; -20) DoUsuniecia = true;
+    }
+
+    public override void Draw() => Gra.FillRect(Pozycja.X - 4, Pozycja.Y - 12, 8, 24, Color.Yellow);
+}
+
+// Gra.cs
+class Gra : GameScript
+{
+    public readonly List&lt;Obiekt&gt; Obiekty = new();
+    readonly List&lt;Obiekt&gt; nowe = new();
+
+    public void Dodaj(Obiekt o) => nowe.Add(o);   // bezpieczne także w trakcie pętli
+
+    public override void Start()
+    {
+        Obiekt.Gra = this;
+    }
+
+    public override void Update(float dt)
+    {
+        if (JustTouched)
+            Dodaj(new Pocisk { Pozycja = TouchPosition });
+
+        foreach (var o in Obiekty) o.Update(dt);
+        Obiekty.RemoveAll(o =&gt; o.DoUsuniecia);
+        Obiekty.AddRange(nowe);
+        nowe.Clear();
+    }
+
+    public override void Draw()
+    {
+        foreach (var o in Obiekty) o.Draw();
+        DrawText($"Obiekty: {Obiekty.Count}", 30, 60, 40, Color.White);
+    }
+}</code></pre>
+<div class="note">Nie dodawaj ani nie usuwaj elementów listy wewnątrz <code>foreach</code> po tej samej liście –
+C# rzuci wyjątek. Dlatego nowe obiekty trafiają najpierw do <code>nowe</code>, a usuwanie robi <code>RemoveAll</code> po pętli.</div>
+<p>Pole <code>static</code> jest bezpieczne: przy każdym „Graj” kod jest kompilowany od nowa, więc statyczne pola startują czyste.</p>
+
+<!-- ============================================================ -->
+<h2 id="ekran">5. Ekran, kolory, współrzędne</h2>
+<ul>
+  <li>(0, 0) to <b>lewy górny róg</b>, X rośnie w prawo, <b>Y w dół</b>. Jednostka = piksel ekranu.</li>
+  <li><code>Width</code>, <code>Height</code> – rozmiar ekranu. Telefon można obrócić, więc czytaj je na bieżąco zamiast zapamiętywać raz.</li>
+  <li><code>Background</code> – kolor tła, np. <code>Background = new Color(20, 24, 40);</code></li>
+  <li>Kolory: <code>Color.Red</code>, <code>new Color(255, 128, 0)</code>, <code>new Color(1f, 0.5f, 0f)</code>.</li>
+  <li>Półprzezroczystość: <code>Color.Black * 0.5f</code> (mnożenie, nie <code>new Color(r,g,b,a)</code> – patrz <a href="#bledy">pułapki</a>).</li>
+  <li>Mieszanie: <code>Color.Lerp(Color.Red, Color.Blue, 0.3f)</code>.</li>
+  <li><code>Fps</code> – aktualna liczba klatek na sekundę.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="rysowanie">6. Prostokąty i linie</h2>
+<pre><code>FillRect(x, y, szerokosc, wysokosc, Color.Red);
+FillRect(new Rectangle(10, 10, 200, 50), Color.Green);</code></pre>
+<p>Linie i obrócone prostokąty zrobisz z białego piksela <code>Pixel</code> i <code>Batch</code>:</p>
+<pre><code>void Linia(Vector2 a, Vector2 b, float grubosc, Color kolor)
+{
+    var d = b - a;
+    Batch.Draw(Pixel, a, null, kolor, MathF.Atan2(d.Y, d.X),
+        new Vector2(0, 0.5f), new Vector2(d.Length(), grubosc), SpriteEffects.None, 0);
+}
+
+void Ramka(Rectangle r, int g, Color c)
+{
+    FillRect(r.X, r.Y, r.Width, g, c);
+    FillRect(r.X, r.Bottom - g, r.Width, g, c);
+    FillRect(r.X, r.Y, g, r.Height, c);
+    FillRect(r.Right - g, r.Y, g, r.Height, c);
+}</code></pre>
+<p>Koło najprościej: wygeneruj teksturę raz w <code>Start</code> (patrz <a href="#monogame">tekstury z kodu</a>) albo użyj obrazka.</p>
+
+<!-- ============================================================ -->
+<h2 id="obrazki">7. Obrazki</h2>
+<pre><code>Texture2D statek;
+
+public override void Start()
+{
+    statek = LoadImage("statek.png");            // PNG albo JPG
+}
+
+public override void Draw()
+{
+    DrawImage(statek, 100, 200);                 // lewy górny róg
+    DrawImage(statek, 100, 200, 2f);             // skala 2×
+    DrawImageCentered(statek, new Vector2(300, 300), obrot, 0.5f);   // środek, obrót w radianach
+    DrawImage(statek, new Rectangle(0, 0, 64, 64));                  // rozciągnięty do prostokąta
+}</code></pre>
+<p><b>Gdzie szukane są obrazki</b> (pierwszy znaleziony wygrywa):</p>
+<ol>
+  <li><code>/sdcard/CsharpGame/projects/<i>TwójProjekt</i>/images/</code></li>
+  <li><code>/sdcard/CsharpGame/images/</code> – wspólne dla wszystkich gier</li>
+  <li>wbudowane w aplikację (np. <code>pilka.png</code>)</li>
+</ol>
+<p>Można podać podfolder (<code>"postacie/kot.png"</code>) albo pełną ścieżkę (<code>"/sdcard/Pictures/kot.png"</code>).</p>
+<p><code>ListImages("tile_*.png")</code> zwraca nazwy pasujących obrazków (także z podfolderów):</p>
+<pre><code>var kafelki = ListImages("tile_*.png").Select(LoadImage).ToList();</code></pre>
+<p><code>image.Width</code>, <code>image.Height</code> – rozmiar obrazka w pikselach.</p>
+<div class="warn"><b>Wczytuj obrazki w <code>Start</code></b>, nie w <code>Update</code>/<code>Draw</code>. <code>LoadImage</code> co klatkę
+zapcha pamięć i zabije FPS.</div>
+
+<!-- ============================================================ -->
+<h2 id="sprite">7b. Sprite'y: atlas, pivot, animacja</h2>
+<p><code>Sprite</code> to wycinek obrazka (np. jedna klatka z atlasu) z <b>pivotem</b> – punktem zaczepienia.
+Pozycja, którą podajesz przy rysowaniu, to miejsce pivota; obrót i skala też są wokół niego.</p>
+<table>
+  <tr><th>Pivot</th><th>Znaczenie</th></tr>
+  <tr><td><code>(0, 0)</code></td><td>lewy górny róg (jak DrawImage)</td></tr>
+  <tr><td><code>(0.5, 0.5)</code></td><td>środek – <b>domyślny</b>; dobre dla pocisków, kół, obracanych rzeczy</td></tr>
+  <tr><td><code>(0.5, 1)</code></td><td>środek dołu – stopy postaci, drzewa, budynki stojące na ziemi</td></tr>
+  <tr><td><code>(0, 0.5)</code></td><td>lewy środek – np. lufa obracana wokół podstawy</td></tr>
+</table>
+
+<h3>Atlas pocięty na siatkę</h3>
+<pre><code>Sprite[] bohater;                     // np. bohater.png: 4 kolumny × 2 rzędy klatek 32×32
+
+public override void Start()
+{
+    bohater = LoadSprites("bohater.png", 32, 32, new Vector2(0.5f, 1f));   // pivot w stopach
+    // klatki numerowane wierszami: 0..3 – pierwszy rząd, 4..7 – drugi
+}
+
+public override void Draw()
+{
+    DrawSprite(bohater[0], pozycja, scale: 4);
+}</code></pre>
+<p>Atlas z odstępami (np. paczki Kenneya): <code>LoadSprites("tiles.png", 16, 16, margin: 0, spacing: 1)</code>.
+Masz już wczytany obrazek? <code>Sprite.Slice(obrazek, 32, 32)</code>.</p>
+
+<h3>Animacja</h3>
+<pre><code>float czas;
+bool wLewo;
+
+public override void Update(float dt)
+{
+    czas += dt;
+    if (IsTouching) wLewo = TouchPosition.X &lt; pozycja.X;
+}
+
+public override void Draw()
+{
+    var bieg = bohater[4..8];                          // klatki 4,5,6,7 (drugi rząd)
+    var klatka = Sprite.Animate(bieg, czas, 10);       // 10 klatek na sekundę, w pętli
+    DrawSprite(klatka, pozycja, scale: 4, flipX: wLewo);   // odbicie w poziomie
+}</code></pre>
+<p><code>Sprite.Animate(klatki, czas, fps, loop: false)</code> zatrzymuje się na ostatniej klatce (wybuch, śmierć) –
+licz wtedy <code>czas</code> od początku tej animacji.</p>
+<p>Przy <code>flipX</code>/<code>flipY</code> pivot też się odbija, więc postać z pivotem w stopach nie „skacze” przy obrocie w drugą stronę.</p>
+
+<h3>Wszystkie warianty DrawSprite</h3>
+<pre><code>DrawSprite(s, x, y);                                   // pivot w (x, y)
+DrawSprite(s, x, y, 2f);                               // skala
+DrawSprite(s, poz, obrot, skala, Color.Red, flipX: true, flipY: false);
+DrawSprite(s, poz, new Vector2(1.2f, 0.8f));           // osobna skala X i Y („spłaszczenie” przy lądowaniu)
+DrawSprite(s, poz, color: Color.White * 0.5f);         // półprzezroczysty</code></pre>
+
+<h3>Ręczny wycinek i własny pivot</h3>
+<pre><code>Texture2D atlas = LoadImage("atlas.png");
+var miecz  = new Sprite(atlas, new Rectangle(64, 0, 16, 48), new Vector2(0.5f, 0.9f));  // obrót wokół rękojeści
+var moneta = new Sprite(atlas, new Rectangle(0, 48, 16, 16));                           // pivot = środek
+var drzwi  = new Sprite(atlas, new Rectangle(80, 0, 32, 48)).SetPivotPixels(16, 46);    // pivot w pikselach wycinka
+var drugi  = miecz.WithPivot(0.5f, 0.5f);           // ta sama klatka, inny pivot
+
+miecz.Pivot = new Vector2(0.5f, 1f);                // pivot można zmieniać w trakcie gry
+// s.Width, s.Height – rozmiar wycinka;  s.Source – prostokąt;  s.Texture – cały atlas</code></pre>
+<p>Bez obiektu <code>Sprite</code>:
+<code>DrawImage(atlas, new Rectangle(32, 0, 32, 32), poz, new Vector2(0.5f, 1f), rotation: 0, scale: 3, flipX: true);</code></p>
+<div class="note">Pixel art wychodzi rozmyty po powiększeniu – włącz ostre piksele (<code>SamplerState.PointClamp</code>),
+patrz <a href="#monogame">rozdział 11</a>.</div>
+
+<!-- ============================================================ -->
+<h2 id="tekst">8. Tekst</h2>
+<pre><code>DrawText($"Wynik: {wynik}", 30, 60, 48, Color.White);          // lewy górny róg, wysokość 48 px
+DrawTextCentered("KONIEC GRY", Width / 2, Height / 2, 96, Color.Red);
+Vector2 rozmiar = MeasureText("Start", 64);                    // szerokość i wysokość w px</code></pre>
+<p>Czcionka DejaVu Sans, polskie znaki działają. Dowolny rozmiar, zmieniający się tekst nic nie kosztuje.</p>
+<p>Tekst z cieniem: narysuj go dwa razy – najpierw czarny przesunięty o 3 px, potem właściwy.</p>
+
+<!-- ============================================================ -->
+<h2 id="dotyk">9. Dotyk</h2>
+<table>
+  <tr><th>Właściwość</th><th>Znaczenie</th></tr>
+  <tr><td><code>IsTouching</code></td><td>palec jest na ekranie (cały czas trwania dotyku)</td></tr>
+  <tr><td><code>JustTouched</code></td><td>palec właśnie dotknął – prawda tylko w jednej klatce (przyciski, skok, strzał)</td></tr>
+  <tr><td><code>JustReleased</code></td><td>palec właśnie został podniesiony – jedna klatka</td></tr>
+  <tr><td><code>TouchPosition</code></td><td>pozycja pierwszego palca (Vector2)</td></tr>
+  <tr><td><code>Touches</code></td><td>wszystkie palce (multi-touch)</td></tr>
+</table>
+<h3>Przycisk</h3>
+<pre><code>Rectangle przycisk = new Rectangle(40, 300, 300, 120);
+
+// Update:
+if (JustTouched &amp;&amp; przycisk.Contains(TouchPosition))
+    wynik = 0;
+
+// Draw:
+FillRect(przycisk, IsTouching &amp;&amp; przycisk.Contains(TouchPosition) ? Color.Gray : Color.DimGray);
+DrawTextCentered("Reset", przycisk.Center.X, przycisk.Center.Y, 48, Color.White);</code></pre>
+<h3>Przeciąganie</h3>
+<pre><code>Vector2 ostatni;
+// Update:
+if (JustTouched) ostatni = TouchPosition;
+else if (IsTouching)
+{
+    kamera += TouchPosition - ostatni;
+    ostatni = TouchPosition;
+}</code></pre>
+<h3>Wiele palców</h3>
+<pre><code>foreach (var t in Touches)
+{
+    // t.Id – numer palca (stały przez cały dotyk), t.Position, t.State:
+    // TouchLocationState.Pressed / Moved / Released
+    if (t.Position.X &lt; Width / 2) wLewo = true; else wPrawo = true;
+}</code></pre>
+<p>W prawym górnym rogu jest przycisk ✕ wyjścia – nie umieszczaj tam własnych przycisków.</p>
+
+<!-- ============================================================ -->
+<h2 id="matma">10. Wektory, kolizje, losowanie</h2>
+<pre><code>var v = new Vector2(3, 4);
+v.Length();                       // 5
+Vector2.Normalize(v);             // długość 1 (uwaga: dla (0,0) daje NaN)
+Vector2.Distance(a, b);
+Vector2.Lerp(a, b, 0.1f);         // płynne podążanie
+a + b, a - b, a * 2f, a / 2f
+
+MathHelper.Clamp(x, 0, Width);
+MathHelper.ToRadians(90);         // obroty są w radianach
+MathHelper.Pi, MathHelper.TwoPi
+MathF.Sin(t), MathF.Cos(t), MathF.Atan2(dy, dx)
+
+// kolizje prostokątów
+var r1 = new Rectangle(x, y, w, h);
+r1.Intersects(r2);   r1.Contains(punkt);   r1.Center
+
+// kolizja kół
+bool trafiony = Vector2.Distance(a, b) &lt; promienA + promienB;
+
+// losowanie – gotowe pole Random
+Random.Next(10);                  // 0..9
+Random.Next(5, 11);               // 5..10
+Random.NextSingle();              // 0..1 (float)</code></pre>
+<p>Ruch w stronę celu ze stałą prędkością:</p>
+<pre><code>var kierunek = cel - pozycja;
+if (kierunek.Length() &gt; 1)
+    pozycja += Vector2.Normalize(kierunek) * 250 * dt;</code></pre>
+<p>Odliczanie czasu:</p>
+<pre><code>float doStrzalu = 0;
+// Update:
+doStrzalu -= dt;
+if (doStrzalu &lt;= 0) { Strzel(); doStrzalu = 0.25f; }   // 4 strzały na sekundę</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="monogame">11. Więcej z MonoGame</h2>
+<p><code>GameScript</code> to tylko wygodna nakładka. Pod spodem jest pełna biblioteka <b>MonoGame 3.8</b> –
+masz dostęp do <code>Batch</code> (SpriteBatch), <code>GraphicsDevice</code> i <code>Pixel</code>, więc możesz używać jej bezpośrednio.</p>
+
+<h3>Pełne SpriteBatch.Draw: wycinek, odbicie, kolor</h3>
+<pre><code>// Batch.Draw(tekstura, pozycja, wycinek, kolor, obrót, punktObrotu, skala, efekty, warstwa)
+Batch.Draw(postac, pozycja, null, Color.White, 0f, Vector2.Zero, 3f,
+    patrzyWLewo ? SpriteEffects.FlipHorizontally : SpriteEffects.None, 0f);
+
+// zabarwienie obrazka: biały = bez zmian
+Batch.Draw(wrog, pozycja, Color.Red);          // czerwony
+Batch.Draw(wrog, pozycja, Color.White * 0.4f); // półprzezroczysty</code></pre>
+
+<p>Animacje z atlasu wygodniej robić przez <code>Sprite</code> – patrz <a href="#sprite">rozdział 7b</a>.</p>
+
+<h3>Ostre piksele (pixel art) i kamera</h3>
+<p>Aplikacja otwiera <code>Batch</code> przed <code>Draw()</code> z ustawieniami domyślnymi (wygładzanie, bez kamery).
+Możesz go zamknąć i otworzyć po swojemu – <b>na końcu otwórz go ponownie zwykłym <code>Batch.Begin()</code></b>,
+bo aplikacja dorysowuje jeszcze przycisk ✕ i sama woła <code>End()</code>.</p>
+<pre><code>public override void Draw()
+{
+    var kameraM = Matrix.CreateTranslation(-kamera.X, -kamera.Y, 0) * Matrix.CreateScale(zoom);
+
+    Batch.End();
+    Batch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: kameraM);
+    // ... świat gry: współrzędne świata, ostre piksele ...
+    Batch.End();
+
+    Batch.Begin();
+    // ... interfejs: współrzędne ekranu (punkty, przyciski) ...
+}
+
+// Dotyk w współrzędnych świata:
+var swiat = Vector2.Transform(TouchPosition, Matrix.Invert(kameraM));</code></pre>
+<p>Inne opcje <code>Batch.Begin</code>: <code>blendState: BlendState.Additive</code> (świecenie, ogień),
+<code>sortMode: SpriteSortMode.BackToFront</code> (sortowanie po parametrze <code>layerDepth</code>).</p>
+
+<h3>Tekstury z kodu</h3>
+<pre><code>Texture2D Kolo(int r, Color kolor)
+{
+    var t = new Texture2D(GraphicsDevice, r * 2, r * 2);
+    var piksele = new Color[r * 2 * r * 2];
+    for (int y = 0; y &lt; r * 2; y++)
+        for (int x = 0; x &lt; r * 2; x++)
+            if ((x - r + 0.5f) * (x - r + 0.5f) + (y - r + 0.5f) * (y - r + 0.5f) &lt;= r * r)
+                piksele[y * r * 2 + x] = kolor;
+    t.SetData(piksele);
+    return t;
+}
+// Start:  kolo = Kolo(32, Color.White);   Draw: Batch.Draw(kolo, poz, Color.Red);</code></pre>
+<p><code>texture.GetData(tablica)</code> odczytuje piksele (np. kolizja co do piksela, mapa poziomu narysowana w PNG).</p>
+
+<h3>Render target (niska rozdzielczość, efekty)</h3>
+<pre><code>RenderTarget2D maly;
+// Start:
+maly = new RenderTarget2D(GraphicsDevice, 320, 180);
+
+// Draw – na samym początku:
+Batch.End();
+GraphicsDevice.SetRenderTarget(maly);
+GraphicsDevice.Clear(Color.Black);
+Batch.Begin(samplerState: SamplerState.PointClamp);
+// ... rysujesz w 320×180 ...
+Batch.End();
+GraphicsDevice.SetRenderTarget(null);
+Batch.Begin(samplerState: SamplerState.PointClamp);
+Batch.Draw(maly, new Rectangle(0, 0, Width, Height), Color.White);   // powiększone na cały ekran
+Batch.End();
+Batch.Begin();</code></pre>
+
+<h3>Proste 3D</h3>
+<p><code>BasicEffect</code>, <code>VertexPositionColor</code>, <code>GraphicsDevice.DrawUserPrimitives</code> działają
+(wbudowane efekty MonoGame są skompilowane). Rysuj je między <code>Batch.End()</code> a <code>Batch.Begin()</code>.</p>
+<pre><code>BasicEffect efekt;   // Start: efekt = new BasicEffect(GraphicsDevice) { VertexColorEnabled = true };
+// Draw:
+Batch.End();
+efekt.World = Matrix.CreateRotationY(czas);
+efekt.View = Matrix.CreateLookAt(new Vector3(0, 0, 3), Vector3.Zero, Vector3.Up);
+efekt.Projection = Matrix.CreatePerspectiveFieldOfView(1f, GraphicsDevice.Viewport.AspectRatio, 0.1f, 100f);
+var trojkat = new[] {
+    new VertexPositionColor(new Vector3(0, 1, 0), Color.Red),
+    new VertexPositionColor(new Vector3(1, -1, 0), Color.Green),
+    new VertexPositionColor(new Vector3(-1, -1, 0), Color.Blue) };
+GraphicsDevice.RasterizerState = RasterizerState.CullNone;
+foreach (var pass in efekt.CurrentTechnique.Passes)
+{
+    pass.Apply();
+    GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, trojkat, 0, 1);
+}
+Batch.Begin();</code></pre>
+
+<h3>Gesty <span class="maybe">(niesprawdzone na telefonie)</span></h3>
+<pre><code>// Start:
+TouchPanel.EnabledGestures = GestureType.Tap | GestureType.FreeDrag | GestureType.Pinch | GestureType.Flick;
+// Update:
+while (TouchPanel.IsGestureAvailable)
+{
+    var g = TouchPanel.ReadGesture();
+    if (g.GestureType == GestureType.Tap) Strzel(g.Position);
+    if (g.GestureType == GestureType.FreeDrag) kamera += g.Delta;
+    if (g.GestureType == GestureType.Pinch) { /* g.Position, g.Position2 – dwa palce */ }
+}</code></pre>
+
+<h3>Co jest dostępne z MonoGame – podsumowanie</h3>
+<table>
+  <tr><th>Obszar</th><th>Stan</th></tr>
+  <tr><td>Vector2/3/4, Matrix, Quaternion, MathHelper, Color, Rectangle, Point</td><td class="ok">tak</td></tr>
+  <tr><td>SpriteBatch (wszystkie Draw, Begin z opcjami), SpriteEffects</td><td class="ok">tak, przez <code>Batch</code></td></tr>
+  <tr><td>Texture2D: FromStream (przez LoadImage), new, SetData, GetData</td><td class="ok">tak</td></tr>
+  <tr><td>RenderTarget2D, BlendState, SamplerState, RasterizerState</td><td class="ok">tak</td></tr>
+  <tr><td>BasicEffect, AlphaTestEffect i inne wbudowane efekty, prymitywy 3D, VertexBuffer</td><td class="ok">tak</td></tr>
+  <tr><td>TouchPanel, TouchCollection, multi-touch</td><td class="ok">tak</td></tr>
+  <tr><td>Gesty TouchPanel</td><td class="maybe">powinny działać, niesprawdzone</td></tr>
+  <tr><td>SoundEffect z pliku WAV</td><td class="maybe">powinien działać, niesprawdzony (patrz niżej)</td></tr>
+  <tr><td>Song / MediaPlayer (MP3, muzyka)</td><td class="no">raczej nie – wymaga Content Pipeline</td></tr>
+  <tr><td>Content.Load, pliki .xnb, SpriteFont</td><td class="no">nie – zamiast tego LoadImage i DrawText</td></tr>
+  <tr><td>Własne shadery (.fx / Effect)</td><td class="no">nie – brak kompilatora shaderów na telefonie</td></tr>
+  <tr><td>Obiekt Game: Exit(), Components, IsFixedTimeStep, TargetElapsedTime</td><td class="no">nie – zarządza nim aplikacja</td></tr>
+  <tr><td>Keyboard, Mouse, GamePad</td><td class="no">nieobsługiwane przez GameScript</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="iso">12. Silnik izometryczny</h2>
+<p>Klasy w <code>GameApi</code> do gier w rzucie izometrycznym. Przykłady: projekt <b>IsoEditor</b>
+(edytor mapy, opisany krok po kroku w <a href="help-iso.html">Tutorialu 2</a>) i <b>IsoStress</b> (sortowanie tysięcy obiektów).</p>
+<table>
+  <tr><th>Klasa</th><th>Do czego</th></tr>
+  <tr><td><code>IsoWorld</code></td><td>przeliczanie kratek izo (x, y, z) ↔ piksele. <code>new IsoWorld(tileSize, tileHeight, tileRatio = 0.5f, tileAngle = 45f)</code>,
+    <code>Origin</code> – gdzie na ekranie leży (0,0,0), <code>ToScreen(Vector3)</code>, <code>ToIso(Vector2 ekran, z = 0)</code></td></tr>
+  <tr><td><code>IsoObject</code></td><td>prostopadłościan: <code>Position</code> (minimalny róg w kratkach), <code>Size</code> (x, y, z),
+    <code>Sprite</code>, <code>Color</code>, <code>IsMoving</code> (ruchome sortowane co klatkę), <code>Name</code></td></tr>
+  <tr><td><code>IsoSorter</code></td><td><code>Sort(obiekty, minX, minY, maxX, maxY)</code> – zwraca widoczne obiekty w kolejności rysowania (od najdalszego).
+    Prostokąt widoku w pikselach świata. <code>InvalidateStatic()</code> po zmianie nieruchomych obiektów.</td></tr>
+  <tr><td><code>IsoSprite</code></td><td><code>IsoSprite.CreateBox(GraphicsDevice, world, rozmiar, out offset)</code> – generuje teksturę klocka (biała z cieniowaniem, kolor nadajesz przy rysowaniu)</td></tr>
+</table>
+<pre><code>IsoWorld world = new(32, 32);
+IsoSorter sorter;
+List&lt;IsoObject&gt; obiekty = new();
+Dictionary&lt;Texture2D, Vector2&gt; przesuniecia = new();
+IsoObject gracz;
+
+public override void Start()
+{
+    world.Origin = new Vector2(Width / 2, 300);
+    sorter = new IsoSorter(world);
+
+    var klocek = IsoSprite.CreateBox(GraphicsDevice, world, new Vector3(1, 1, 1), out var off);
+    przesuniecia[klocek] = off;
+    for (int x = 0; x &lt; 8; x++)
+        for (int y = 0; y &lt; 8; y++)
+            if (Random.Next(4) == 0)
+                obiekty.Add(new IsoObject { Position = new Vector3(x, y, 0), Size = Vector3.One, Sprite = klocek, Color = Color.SandyBrown });
+
+    var maly = IsoSprite.CreateBox(GraphicsDevice, world, new Vector3(0.4f, 0.4f, 0.8f), out off);
+    przesuniecia[maly] = off;
+    gracz = new IsoObject { Position = new Vector3(0, 0, 0), Size = new Vector3(0.4f, 0.4f, 0.8f), Sprite = maly, Color = Color.Red, IsMoving = true };
+    obiekty.Add(gracz);
+}
+
+public override void Update(float dt)
+{
+    if (IsTouching)
+    {
+        var cel = world.ToIso(TouchPosition);         // kratka pod palcem
+        var p = gracz.Position;
+        gracz.Position = Vector3.Lerp(p, new Vector3(cel.X, cel.Y, 0), 3 * dt);
+    }
+}
+
+public override void Draw()
+{
+    foreach (var o in sorter.Sort(obiekty, 0, 0, Width, Height))
+        Batch.Draw(o.Sprite, world.ToScreen(o.Position) + przesuniecia[o.Sprite], o.Color);
+}</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="pliki">13. Pliki, zapis, dźwięk</h2>
+<p>Dostępna jest cała biblioteka .NET (<code>using System.IO;</code>). Folder gier to <code>/sdcard/CsharpGame/</code>.</p>
+<h3>Zapis rekordu</h3>
+<p><code>ProjectFolder</code> to folder bieżącego projektu, a <code>ProjectFile("nazwa.txt")</code> daje pełną ścieżkę pliku w nim.</p>
+<pre><code>using System.IO;
+
+int rekord;
+
+// Start:
+string plik = ProjectFile("rekord.txt");
+if (File.Exists(plik)) int.TryParse(File.ReadAllText(plik), out rekord);
+
+// po końcu gry:
+if (wynik &gt; rekord) { rekord = wynik; File.WriteAllText(ProjectFile("rekord.txt"), rekord.ToString()); }</code></pre>
+<p>Większe dane: <code>System.Text.Json.JsonSerializer.Serialize(obiekt)</code> / <code>Deserialize&lt;T&gt;(tekst)</code>.</p>
+<h3>Dźwięk <span class="maybe">(niesprawdzony na telefonie)</span></h3>
+<pre><code>using System.IO;
+using Microsoft.Xna.Framework.Audio;
+
+SoundEffect skok;
+// Start:
+using (var s = File.OpenRead(ProjectFile("skok.wav")))
+    skok = SoundEffect.FromStream(s);     // tylko WAV (PCM)
+// gdy trzeba:
+skok.Play();                               // albo skok.Play(glosnosc, wysokosc, panorama)</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="brak">14. Czego nie ma</h2>
+<ul>
+  <li><b>Content Pipeline</b> – <code>Content.Load</code>, pliki <code>.xnb</code>, <code>SpriteFont</code>. Obrazki: <code>LoadImage</code>, tekst: <code>DrawText</code>.</li>
+  <li><b>Własne shadery</b> – nie ma kompilatora efektów. Zostają wbudowane (<code>BasicEffect</code> itd.) i <code>BlendState</code>.</li>
+  <li><b>Dostęp do obiektu <code>Game</code></b> – nie wyjdziesz z gry kodem (<code>Exit()</code>), nie zmienisz liczby klatek. Wyjście: ✕ albo Wstecz.</li>
+  <li><b>Klawiatura, mysz, pad</b> – tylko dotyk.</li>
+  <li><b>Komponenty MonoGame</b> (<code>GameComponent</code>, <code>DrawableGameComponent</code>) – zamiast nich wzorzec z <a href="#klasy">rozdziału 4</a>.</li>
+  <li><b>Muzyka MP3</b> (<code>Song</code>, <code>MediaPlayer</code>) – raczej nie zadziała.</li>
+  <li><b>Czujniki</b> (akcelerometr) – MonoGame 3.8 ich nie ma.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="bledy">15. Błędy i pułapki</h2>
+<ul>
+  <li><b>Błąd kompilacji</b> – lista pod edytorem, dotknij wiersza, żeby skoczyć do pliku i linii. Zakładka z błędem jest czerwona.</li>
+  <li><b>Wyjątek w trakcie gry</b> (np. <code>NullReferenceException</code>, brak obrazka) – gra się zamyka, a w edytorze pojawia się
+    „Błąd w trakcie gry: …”. Najczęściej: pole nie zostało ustawione w <code>Start</code>.</li>
+  <li><b>Podgląd wartości</b> – nie ma debuggera, więc wypisuj zmienne na ekran: <code>DrawText($"x={x:0.0} v={v}", 20, 200, 32, Color.Yellow);</code></li>
+  <li><b>Nie twórz tekstur w <code>Draw</code>/<code>Update</code></b> (<code>LoadImage</code>, <code>new Texture2D</code>, <code>new RenderTarget2D</code>) – rób to raz w <code>Start</code>.
+    Niepotrzebną teksturę zwolnij: <code>tekstura.Dispose()</code>.</li>
+  <li><b>Przezroczystość</b> – kolory są „premultiplied”: używaj <code>kolor * 0.5f</code>. <code>new Color(255, 0, 0, 128)</code> wyjdzie jaśniejszy niż powinien.</li>
+  <li><b>Pętla nieskończona</b> w <code>Update</code> zawiesza aplikację – trzeba ją zamknąć z systemu.</li>
+  <li><b><code>Vector2.Normalize(Vector2.Zero)</code></b> daje NaN i obiekt znika – sprawdzaj długość przed normalizacją.</li>
+  <li><b>Dzielenie całkowite</b>: <code>Width / 3</code> to int; <code>1 / 2</code> = 0. Pisz <code>1f / 2</code>.</li>
+  <li><b><code>JustTouched</code> w <code>Draw</code></b> może przegapić klatkę – sprawdzaj dotyk w <code>Update</code>.</li>
+  <li><b>Wydajność</b>: unikaj <code>new List</code>, LINQ i łączenia stringów w każdej klatce przy tysiącach obiektów. Kilkaset obiektów to nie problem.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="sciaga">16. Ściągawka GameScript</h2>
+<table>
+  <tr><th>Członek</th><th>Opis</th></tr>
+  <tr><td><code>Start()</code></td><td>raz na początku</td></tr>
+  <tr><td><code>Update(float dt)</code></td><td>logika, dt w sekundach</td></tr>
+  <tr><td><code>Draw()</code></td><td>rysowanie</td></tr>
+  <tr><td><code>Width</code>, <code>Height</code></td><td>rozmiar ekranu</td></tr>
+  <tr><td><code>Background</code></td><td>kolor tła</td></tr>
+  <tr><td><code>Fps</code></td><td>klatki na sekundę</td></tr>
+  <tr><td><code>Random</code></td><td>generator losowy</td></tr>
+  <tr><td><code>IsTouching</code>, <code>JustTouched</code>, <code>JustReleased</code></td><td>stan dotyku</td></tr>
+  <tr><td><code>TouchPosition</code>, <code>Touches</code></td><td>pozycja / wszystkie palce</td></tr>
+  <tr><td><code>FillRect(x, y, w, h, kolor)</code>, <code>FillRect(rect, kolor)</code></td><td>prostokąt</td></tr>
+  <tr><td><code>DrawText(tekst, x, y, rozmiar, kolor)</code></td><td>tekst od lewego górnego rogu</td></tr>
+  <tr><td><code>DrawTextCentered(tekst, x, y, rozmiar, kolor)</code></td><td>tekst wyśrodkowany</td></tr>
+  <tr><td><code>MeasureText(tekst, rozmiar)</code></td><td>rozmiar tekstu</td></tr>
+  <tr><td><code>LoadImage(nazwa)</code></td><td>wczytaj PNG/JPG</td></tr>
+  <tr><td><code>ListImages(wzorzec)</code></td><td>nazwy obrazków</td></tr>
+  <tr><td><code>DrawImage(img, x, y, skala)</code></td><td>obrazek od lewego górnego rogu</td></tr>
+  <tr><td><code>DrawImage(img, rect)</code></td><td>obrazek rozciągnięty</td></tr>
+  <tr><td><code>DrawImageCentered(img, środek, obrót, skala)</code></td><td>obrazek wyśrodkowany</td></tr>
+  <tr><td><code>DrawImage(img, wycinek, poz, pivot, ...)</code></td><td>wycinek atlasu z pivotem</td></tr>
+  <tr><td><code>LoadSprites(nazwa, w, h, pivot)</code></td><td>atlas pocięty na klatki → <code>Sprite[]</code></td></tr>
+  <tr><td><code>DrawSprite(s, poz, obrót, skala, kolor, flipX, flipY)</code></td><td>sprite z pivotem w poz</td></tr>
+  <tr><td><code>Sprite.Animate(klatki, czas, fps)</code></td><td>bieżąca klatka animacji</td></tr>
+  <tr><td><code>new Sprite(img, wycinek, pivot)</code>, <code>.Pivot</code>, <code>.SetPivotPixels</code></td><td>własny wycinek / zmiana pivota</td></tr>
+  <tr><td><code>ProjectFolder</code>, <code>ProjectFile(nazwa)</code></td><td>folder projektu / ścieżka pliku w nim</td></tr>
+  <tr><td><code>Batch</code>, <code>GraphicsDevice</code>, <code>Pixel</code></td><td>bezpośredni dostęp do MonoGame</td></tr>
+</table>
+<p style="margin-top:24px"><a href="#">↑ do góry</a></p>
+</body>
+</html>

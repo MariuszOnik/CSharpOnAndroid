@@ -1,0 +1,62 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    name: APK ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: android-arm64
+            name: arm64
+          - abi: android-arm
+            name: arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Ten sam JDK co lokalnie (17); nowszy systemowy psul narzedzia Androida.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: 17
+
+      - name: Workload android
+        run: dotnet workload install android
+
+      # Doinstalowuje brakujace czesci Android SDK (platforma, build-tools) wymagane przez workload.
+      - name: Android SDK
+        run: >
+          dotnet build src/GamePlayer/GamePlayer.csproj -t:InstallAndroidDependencies
+          "-p:ApkAbi=${{ matrix.abi }}"
+          "-p:AndroidSdkDirectory=$env:ANDROID_HOME" "-p:JavaSdkDirectory=$env:JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True -v:minimal
+
+      # ApkAbi zamiast RuntimeIdentifiers - patrz komentarz w GamePlayer.csproj.
+      - name: Build Release
+        run: >
+          dotnet build src/GamePlayer/GamePlayer.csproj -c Release
+          "-p:ApkAbi=${{ matrix.abi }}"
+          "-p:AndroidSdkDirectory=$env:ANDROID_HOME" "-p:JavaSdkDirectory=$env:JAVA_HOME"
+          -v:minimal
+
+      - name: Nazwa APK
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item src/GamePlayer/bin/Release/net10.0-android/GamePlayer.GamePlayer-Signed.apk dist/CsharpGamePlayer-${{ matrix.name }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CsharpGamePlayer-${{ matrix.name }}
+          path: dist/*.apk
+          if-no-files-found: error

@@ -16,6 +16,9 @@ public class GameHost : Game
     /// <summary>Foldery z obrazkami uruchamianego projektu, w kolejności szukania.</summary>
     public static string[] PendingImageDirs = [];
 
+    /// <summary>Folder uruchamianego projektu.</summary>
+    public static string PendingProjectFolder = "";
+
     const double FpsWindowSeconds = 0.5;
 
     static string? _runtimeError;
@@ -52,6 +55,7 @@ public class GameHost : Game
         {
             _script = (GameScript)Activator.CreateInstance(PendingScriptType)!;
             _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage, ListImages, ReadAsset("fonts/DejaVuSans.ttf"));
+            _script.SetProjectFolder(PendingProjectFolder);
             _script.Start();
         });
     }

@@ -118,6 +118,11 @@ class EditorBridge(EditorActivity activity) : Java.Lang.Object
         });
     }
 
+    /// <summary>Gdy pomoc jest otwarta, Wstecz zamyka ją zamiast wychodzić z aplikacji.</summary>
+    [JavascriptInterface]
+    [Export("setHelpOpen")]
+    public void SetHelpOpen(bool open) => activity.SetHelpOpen(open);
+
     static string Run(Func<string> action)
     {
         ActionResult result;

@@ -35,6 +35,12 @@
     #dialog button { padding: 11px; background: #3a404b; color: #d7dae0; border: 0; border-radius: 6px; font-size: 15px; text-align: left; }
     #dialog button.primary { background: #3a9b4c; color: #fff; }
     #dialog button.danger { background: #8c3a40; color: #fff; }
+    #helpButton { background: #3a404b; color: #d7dae0; border: 0; border-radius: 6px; padding: 8px 13px; font-size: 16px; font-weight: bold; }
+    #help { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; background: #282c34; }
+    #helpBar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #21252b; color: #d7dae0; font-size: 16px; }
+    #helpBar span { flex: 1; }
+    #helpClose { background: #3a404b; color: #d7dae0; border: 0; border-radius: 6px; padding: 8px 14px; font-size: 15px; }
+    #helpFrame { flex: 1; width: 100%; border: 0; }
   </style>
 </head>
 <body>
@@ -42,6 +48,7 @@
     <button id="project"></button>
     <button id="play">▶ Graj</button>
     <span id="status"></span>
+    <button id="helpButton" title="Pomoc">?</button>
   </div>
   <div id="tabs"></div>
   <div id="editor"></div>
@@ -53,6 +60,10 @@
     <button>&lt;</button><button>&gt;</button><button>[</button><button>]</button>
     <button>+</button><button>-</button><button>*</button><button>/</button>
     <button>!</button><button>&amp;</button><button>|</button><button>,</button>
+  </div>
+  <div id="help" hidden>
+    <div id="helpBar"><span>Pomoc</span><button id="helpClose">✕ Zamknij</button></div>
+    <iframe id="helpFrame"></iframe>
   </div>
   <div id="modal" hidden><div id="dialog"></div></div>
   <script src="editor.js"></script>

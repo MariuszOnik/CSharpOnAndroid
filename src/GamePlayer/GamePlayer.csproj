@@ -4,7 +4,9 @@
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
     <!-- android-arm: tanie telefony mają często 32-bitowego Androida (np. Redmi 9A). android-x64: emulator. -->
-    <RuntimeIdentifiers>android-arm;android-arm64;android-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers Condition="'$(ApkAbi)' == ''">android-arm;android-arm64;android-x64</RuntimeIdentifiers>
+    <!-- build-apk.ps1: osobny APK na jedną architekturę. Nie -p:RuntimeIdentifiers, bo to przechodzi też do GameApi i psuje build. -->
+    <RuntimeIdentifiers Condition="'$(ApkAbi)' != ''">$(ApkAbi)</RuntimeIdentifiers>
     <!-- Przy buildzie przyrostowym Release marshal methods gubiły metody i aplikacja padała z UnsatisfiedLinkError. -->
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     <Nullable>enable</Nullable>

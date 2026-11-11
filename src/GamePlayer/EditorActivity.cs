@@ -66,10 +66,49 @@ public class EditorActivity : Activity
     internal void SendResult(CompileResult result) =>
         RunJs($"window.onCompileResult({JsonSerializer.Serialize(result, JsonOptions)})");
 
+    // Pomoc w edytorze: Wstecz ma ją zamknąć. Od Androida 13 (a przy targetSdk 36 obowiązkowo od 16)
+    // system nie woła OnBackPressed, tylko zarejestrowany OnBackInvokedCallback.
+    bool _helpOpen;
+    BackCallback? _helpBack;
+
+    internal void SetHelpOpen(bool open) => RunOnUiThread(() =>
+    {
+        _helpOpen = open;
+        if (Build.VERSION.SdkInt < BuildVersionCodes.Tiramisu)
+            return;
+        if (open && _helpBack == null)
+        {
+            _helpBack = new BackCallback(CloseHelp);
+            OnBackInvokedDispatcher.RegisterOnBackInvokedCallback(0, _helpBack);
+        }
+        else if (!open && _helpBack != null)
+        {
+            OnBackInvokedDispatcher.UnregisterOnBackInvokedCallback(_helpBack);
+            _helpBack = null;
+        }
+    });
+
+    void CloseHelp() => RunJs("window.closeHelp && window.closeHelp()");
+
+    [Obsolete("Starsze Androidy; od 13 działa OnBackInvokedCallback")]
+    public override void OnBackPressed()
+    {
+        if (_helpOpen)
+            CloseHelp();
+        else
+            base.OnBackPressed();
+    }
+
+    class BackCallback(Action onBack) : Java.Lang.Object, Android.Window.IOnBackInvokedCallback
+    {
+        public void OnBackInvoked() => onBack();
+    }
+
     internal void StartGame(Type scriptType, string project)
     {
         GameHost.PendingScriptType = scriptType;
         GameHost.PendingImageDirs = GameFiles.ImageDirs(this, project);
+        GameHost.PendingProjectFolder = GameFiles.ProjectFolder(this, project);
         RunOnUiThread(() => StartActivity(new Intent(this, typeof(GameActivity))));
     }
 }

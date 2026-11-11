@@ -2,7 +2,8 @@
 // Komunikacja z C# (EditorBridge):
 //   JS -> C#: Android.state(), openProject, createProject, deleteProject, createFile, renameFile, deleteFile,
 //             save(project, file, code), compile(project), complete(id, project, file, code, pos)
-//   C# -> JS: window.onCompileResult(json), window.onCompletions(id, json), window.onResumed()
+//             setHelpOpen(bool)
+//   C# -> JS: window.onCompileResult(json), window.onCompletions(id, json), window.onResumed(), window.closeHelp()
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
@@ -379,6 +380,25 @@ window.onCompileResult = (result) => {
   setStatus(errors.length ? `Błędy: ${errors.length}` : result.message || "Błąd", "error");
   if (errors.length) jumpTo(errors[0]);
 };
+
+// --- Pomoc: help.html w nakładce, żeby nie tracić stanu edytora. Wstecz ją zamyka. ---
+const helpPanel = document.getElementById("help");
+const helpFrame = document.getElementById("helpFrame");
+
+function openHelp() {
+  saveNow();
+  if (!helpFrame.getAttribute("src")) helpFrame.src = "help.html";
+  helpPanel.hidden = false;
+  bridge?.setHelpOpen(true);
+}
+
+window.closeHelp = () => {
+  helpPanel.hidden = true;
+  bridge?.setHelpOpen(false);
+};
+
+document.getElementById("helpButton").addEventListener("click", openHelp);
+document.getElementById("helpClose").addEventListener("click", window.closeHelp);
 
 // Pasek symboli, których brakuje na klawiaturze telefonu.
 for (const button of document.querySelectorAll("#symbols button")) {

@@ -190,6 +190,9 @@ public static class GameFiles
             Directory.CreateDirectory(Path.Combine(root, "images"));
 
             var preferences = context.GetSharedPreferences(Preferences, FileCreationMode.Private)!;
+            // Przykłady sprawdzamy przy każdym starcie, żeby nowe wersje aplikacji dokładały nowe przykłady.
+            InstallSamples(context.Assets!, projects, preferences, root);
+
             var preparedKey = "prepared:" + root;
             if (preferences.GetBoolean(preparedKey, false))
                 return;
@@ -202,8 +205,6 @@ public static class GameFiles
             if (root != privateRoot && Directory.Exists(privateProjects))
                 foreach (var dir in Directory.GetDirectories(privateProjects))
                     CopyDirectory(dir, Path.Combine(projects, Path.GetFileName(dir)!));
-
-            InstallSamples(context.Assets!, projects);
 
             using var editor = preferences.Edit()!;
             editor.PutBoolean(preparedKey, true)!.Apply();
@@ -239,15 +240,26 @@ public static class GameFiles
             CopyDirectory(dir, Path.Combine(target, Path.GetFileName(dir)!));
     }
 
-    static void InstallSamples(AssetManager assets, string projects)
+    // Każdy przykład kopiujemy raz: usunięty przez gracza nie wraca, istniejący nie jest nadpisywany.
+    static void InstallSamples(AssetManager assets, string projects, ISharedPreferences preferences, string root)
     {
+        using var editor = preferences.Edit()!;
         foreach (var sample in assets.List("samples") ?? [])
         {
+            var key = "sample:" + root + ":" + sample;
+            if (preferences.GetBoolean(key, false))
+                continue;
+
             var target = Path.Combine(projects, sample);
             if (!Directory.Exists(target))
                 CopyAssets(assets, "samples/" + sample, target);
+            editor.PutBoolean(key, true);
         }
+        editor.Apply();
     }
+
+    /// <summary>Folder projektu (kod, obrazki, pliki zapisywane przez grę).</summary>
+    public static string ProjectFolder(Context context, string project) => ProjectDir(context, project);
 
     static void CopyAssets(AssetManager assets, string path, string target)
     {

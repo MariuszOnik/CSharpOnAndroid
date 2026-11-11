@@ -483,3 +483,9 @@ $RECYCLE.BIN/
 
 # editor-web
 node_modules/
+
+# APK z build-apk.ps1
+dist/
+
+# Prywatne notatki i materialy robocze (nie do publicznego repo)
+czat cloude/

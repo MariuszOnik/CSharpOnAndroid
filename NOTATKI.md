@@ -38,6 +38,16 @@ Plan techniczny:
 - Kod gracza kompilowany z optymalizacją Release
 - Przykłady w `Assets/samples/`: `BallDemo`, `IsoStress` (klocki Kenneya, CC0)
 
+## 2026-11-09 – pomoc i sprite'y
+- Przycisk „?” w edytorze → `Assets/editor/help.html` (poradnik API) w nakładce, Wstecz ją zamyka
+- `GameApi/Sprite.cs`: wycinek atlasu + pivot 0..1, `Sprite.Slice`, `Sprite.Animate`;
+  w `GameScript`: `LoadSprites`, `DrawSprite`, `DrawImage(img, source, pos, pivot, ...)` (flip odbija też pivot)
+- Telefon: FTP `192.168.1.28:5041`, APK do `device/Download/`
+- Przykład `IsoEditor` (edytor mapy izo, tylko dotyk) + `help-iso.html` (Tutorial 2).
+  `farma.png` = `crops_tileset.png` bez białego tła, przepakowany do siatki 36×48 z pivotem (18, 35)
+- `GameScript.ProjectFolder` / `ProjectFile(nazwa)` – zapis plików gry w folderze projektu
+- Przykłady instalują się przy każdym starcie, jeśli jeszcze nie były (flaga per przykład) – wcześniej tylko przy pierwszym
+
 Pułapki, na które już trafiliśmy:
 - FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`
 - mgcb się wywalał → usunięty `MonoGame.Content.Builder.Task` (obrazki ładujemy z PNG)

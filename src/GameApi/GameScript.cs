@@ -128,6 +128,57 @@ public abstract class GameScript
     /// <summary>Rysuje obrazek rozciągnięty do prostokąta.</summary>
     public void DrawImage(Texture2D image, Rectangle destination) => Batch.Draw(image, destination, Color.White);
 
+    /// <summary>
+    /// Rysuje wycinek obrazka (np. klatkę z atlasu) tak, że punkt pivot (0..1 względem wycinka) trafia w position.
+    /// Przykład: DrawImage(atlas, new Rectangle(32, 0, 32, 32), poz, new Vector2(0.5f, 1f), scale: 3);
+    /// </summary>
+    public void DrawImage(Texture2D image, Rectangle source, Vector2 position, Vector2 pivot,
+        float rotation = 0f, float scale = 1f, Color? color = null, bool flipX = false, bool flipY = false) =>
+        DrawRegion(image, source, position, pivot, rotation, new Vector2(scale), color ?? Color.White, flipX, flipY);
+
+    // ---------- Sprite'y (atlas + pivot) ----------
+
+    /// <summary>
+    /// Wczytuje obrazek i tnie go na klatki frameWidth×frameHeight (wierszami).
+    /// Przykład: var bieg = LoadSprites("bohater.png", 32, 32, new Vector2(0.5f, 1f));
+    /// </summary>
+    public Sprite[] LoadSprites(string name, int frameWidth, int frameHeight, Vector2? pivot = null, int margin = 0, int spacing = 0) =>
+        Sprite.Slice(LoadImage(name), frameWidth, frameHeight, pivot, margin, spacing);
+
+    /// <summary>Rysuje sprite tak, że jego pivot trafia w position. Obrót (radiany) i skala są wokół pivota.</summary>
+    public void DrawSprite(Sprite sprite, Vector2 position, float rotation = 0f, float scale = 1f,
+        Color? color = null, bool flipX = false, bool flipY = false) =>
+        DrawRegion(sprite.Texture, sprite.Source, position, sprite.Pivot, rotation, new Vector2(scale), color ?? Color.White, flipX, flipY);
+
+    /// <summary>Rysuje sprite z pivotem w (x, y).</summary>
+    public void DrawSprite(Sprite sprite, float x, float y, float scale = 1f) =>
+        DrawSprite(sprite, new Vector2(x, y), 0f, scale);
+
+    /// <summary>Rysuje sprite z osobną skalą w poziomie i pionie (np. rozciąganie, „squash”).</summary>
+    public void DrawSprite(Sprite sprite, Vector2 position, Vector2 scale, float rotation = 0f, Color? color = null) =>
+        DrawRegion(sprite.Texture, sprite.Source, position, sprite.Pivot, rotation, scale, color ?? Color.White, false, false);
+
+    // Przy odbiciu lustrzanym pivot też się odbija, żeby został w tym samym miejscu rysunku (np. stopy postaci).
+    void DrawRegion(Texture2D image, Rectangle source, Vector2 position, Vector2 pivot, float rotation, Vector2 scale, Color color, bool flipX, bool flipY)
+    {
+        var effects = (flipX ? SpriteEffects.FlipHorizontally : 0) | (flipY ? SpriteEffects.FlipVertically : 0);
+        var origin = new Vector2(
+            (flipX ? 1 - pivot.X : pivot.X) * source.Width,
+            (flipY ? 1 - pivot.Y : pivot.Y) * source.Height);
+        Batch.Draw(image, position, source, color, rotation, origin, scale, effects, 0f);
+    }
+
+    // ---------- Pliki ----------
+
+    /// <summary>Folder bieżącego projektu, np. /sdcard/CsharpGame/projects/MojaGra.</summary>
+    public string ProjectFolder { get; private set; } = "";
+
+    /// <summary>
+    /// Pełna ścieżka pliku w folderze projektu – do zapisu map, rekordów itp.
+    /// Przykład: File.WriteAllText(ProjectFile("mapa.txt"), tekst);  (wymaga using System.IO;)
+    /// </summary>
+    public string ProjectFile(string name) => Path.Combine(ProjectFolder, name);
+
     // ---------- Podłączenie do hosta ----------
 
     Func<string, Stream> _openImage = null!;
@@ -148,4 +199,6 @@ public abstract class GameScript
     internal void SetTouches(TouchCollection touches) => Touches = touches;
 
     internal void SetFps(float fps) => Fps = fps;
+
+    internal void SetProjectFolder(string folder) => ProjectFolder = folder;
 }

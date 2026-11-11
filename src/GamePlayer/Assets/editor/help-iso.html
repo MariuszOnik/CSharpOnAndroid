@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edytor mapy izo</title>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { margin: 0; padding: 12px 14px 60px; background: #282c34; color: #abb2bf; font: 15px/1.55 sans-serif; }
+    nav { display: flex; gap: 8px; margin-bottom: 10px; }
+    nav a { padding: 6px 12px; background: #3a404b; color: #d7dae0; border-radius: 6px; text-decoration: none; font-size: 14px; }
+    nav a.active { background: #3a9b4c; color: #fff; }
+    h1 { margin: 4px 0 10px; font-size: 22px; color: #e5c07b; }
+    h2 { margin: 28px 0 8px; padding-top: 8px; border-top: 1px solid #3a404b; font-size: 19px; color: #61afef; }
+    h3 { margin: 18px 0 6px; font-size: 16px; color: #d7dae0; }
+    p, li { max-width: 760px; }
+    a { color: #56b6c2; }
+    code { padding: 1px 4px; background: #21252b; border-radius: 4px; color: #e5c07b; font: 13.5px monospace; }
+    pre { margin: 8px 0; padding: 10px; overflow-x: auto; background: #1d2026; border-radius: 6px; border-left: 3px solid #3a9b4c; }
+    pre code { padding: 0; background: none; color: #d7dae0; font-size: 13px; line-height: 1.45; }
+    table { border-collapse: collapse; width: 100%; max-width: 760px; font-size: 14px; }
+    td, th { padding: 6px 8px; border-bottom: 1px solid #3a404b; vertical-align: top; text-align: left; }
+    th { color: #d7dae0; }
+    .note { padding: 8px 10px; background: #2c313a; border-left: 3px solid #e5c07b; border-radius: 4px; }
+    .atlas { display: block; max-width: 100%; margin: 8px 0; background: #1d2026; border-radius: 6px; image-rendering: pixelated; }
+    #toc { padding-left: 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+<nav><a href="help.html">Poradnik API</a><a class="active" href="help-iso.html">Tutorial 2: edytor mapy izo</a></nav>
+<h1>Tutorial 2: edytor mapy izometrycznej</h1>
+<p>Budujemy edytor mapy obsługiwany tylko palcami: maluje się teren i obiekty, dwoma palcami przesuwa i przybliża,
+jest cofanie i zapis do pliku. Gotowy, działający kod jest w projekcie <b>IsoEditor</b>
+(przycisk z nazwą projektu → <b>IsoEditor</b> → ▶ Graj). Tutorial wyjaśnia go kawałek po kawałku.</p>
+
+<table>
+  <tr><th>Gest</th><th>Działanie</th></tr>
+  <tr><td>1 palec na mapie</td><td>maluje wybraną klatką; przeciąganie maluje dalej</td></tr>
+  <tr><td>2 palce</td><td>przesuwanie mapy i zoom (szczypanie)</td></tr>
+  <tr><td>pasek na dole</td><td>paleta: przeciągnij, żeby przewinąć, dotknij, żeby wybrać. Pierwsze pole to gumka</td></tr>
+  <tr><td>Teren / Obiekty</td><td>warstwa, na której malujesz</td></tr>
+  <tr><td>Cofnij, Siatka, Nowa, Zapisz, Wczytaj, Środek</td><td>przyciski u góry</td></tr>
+</table>
+
+<ol id="toc">
+  <li><a href="#pliki">Pliki projektu</a></li>
+  <li><a href="#atlas">Atlasy i pivot</a></li>
+  <li><a href="#isoworld">IsoWorld: kratki ↔ piksele</a></li>
+  <li><a href="#mapa">Dane mapy</a></li>
+  <li><a href="#rysowanie">Rysowanie w dobrej kolejności</a></li>
+  <li><a href="#kamera">Kamera</a></li>
+  <li><a href="#dotyk">Dotyk: malowanie, przesuwanie, zoom</a></li>
+  <li><a href="#paleta">Paleta i przyciski</a></li>
+  <li><a href="#cofanie">Cofanie i zapis</a></li>
+  <li><a href="#dalej">Zadania: co dalej</a></li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="pliki">1. Pliki projektu</h2>
+<table>
+  <tr><th>Plik</th><th>Zawartość</th></tr>
+  <tr><td><code>Game.cs</code></td><td>klasa <code>IsoEditor : GameScript</code> – jedyny punkt wejścia: kamera, dotyk, paleta, rysowanie</td></tr>
+  <tr><td><code>Mapa.cs</code></td><td>zwykła klasa z danymi mapy, cofaniem i zapisem do tekstu – nic nie rysuje</td></tr>
+  <tr><td><code>images/grass_and_water.png</code></td><td>atlas terenu</td></tr>
+  <tr><td><code>images/farma.png</code></td><td>atlas obiektów</td></tr>
+  <tr><td><code>mapa.txt</code></td><td>pojawia się po „Zapisz”</td></tr>
+</table>
+<p>Podział jest celowy: <code>Mapa</code> to same dane, więc tę samą klasę wkleisz potem do gry, która mapę tylko wczytuje.</p>
+
+<!-- ============================================================ -->
+<h2 id="atlas">2. Atlasy i pivot</h2>
+<h3>Teren: grass_and_water.png</h3>
+<img class="atlas" src="grass_and_water.png" alt="atlas trawy i wody" width="256">
+<p>Równa siatka: 4 kolumny × 6 rzędów, każda klatka 64×64 px. Romb kafelka ma 64×32 px, a trawa wystaje nad nim.
+Jest tu pełna trawa, przejścia trawa–woda i czysta woda (dwie ostatnie klatki).</p>
+<p><b>Pivot</b> to punkt klatki, który trafi w podaną pozycję. Wybieramy <b>środek górnej powierzchni rombu</b>:
+w tej grafice to piksel (32, 28). Pivot podaje się względnie (0..1), więc dzielimy przez rozmiar klatki:</p>
+<pre><code>teren = LoadSprites("grass_and_water.png", 64, 64, new Vector2(0.5f, 28f / 64));</code></pre>
+<p>Woda jest narysowana o kilka pikseli niżej niż trawa (jej romb ma środek w y ≈ 37). Przy tym samym pivocie
+lustro wody wypada trochę poniżej trawy, tak jak w naturze.</p>
+<div class="note">Jak znaleźć pivot w innej grafice? Powiększ klatkę i odczytaj, w którym pikselu jest środek
+górnego rombu. Ten piksel podziel przez szerokość i wysokość klatki.</div>
+
+<h3>Obiekty: farma.png</h3>
+<img class="atlas" src="farma.png" alt="atlas farmy" width="288">
+<p>Ten atlas powstał z <code>crops_tileset.png</code>. Oryginał miał białe tło, nierówny układ i nachodzące na siebie
+prostokąty sprite'ów, więc tło zostało wycięte, a każdy sprite przeniesiony do równej siatki 36×48 tak, żeby jego
+„punkt stania” wypadł zawsze w pikselu (18, 35). Dzięki temu jeden pivot pasuje do wszystkich 42 klatek:</p>
+<pre><code>obiekty = LoadSprites("farma.png", 36, 48, new Vector2(0.5f, 35f / 48))[..42];   // dalej są puste pola</code></pre>
+<p>Kafelki farmy mają 32 px szerokości, a nasz romb 64 px, więc obiekty rysujemy w skali 2.</p>
+<p>Gdybyś chciał użyć nierównego atlasu bez przerabiania, każdy sprite opisujesz ręcznie:</p>
+<pre><code>var atlas = LoadImage("moj_atlas.png");
+var domek = new Sprite(atlas, new Rectangle(294, 131, 34, 42)).SetPivotPixels(17, 33);</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="isoworld">3. IsoWorld: kratki ↔ piksele</h2>
+<pre><code>readonly IsoWorld swiat = new(32, 32);   // tileSize 32 → romb 2 × 32 = 64 px szerokości, 32 px wysokości</code></pre>
+<p><code>IsoWorld</code> przelicza punkt mapy (x, y w kratkach, z w górę) na piksel i z powrotem:</p>
+<ul>
+  <li><code>swiat.ToScreen(new Vector3(x, y, 0))</code> – róg kratki (x, y) na ekranie,</li>
+  <li><code>swiat.ToScreen(new Vector3(x + 0.5f, y + 0.5f, 0))</code> – <b>środek</b> kratki, czyli tu stawiamy pivot sprite'a,</li>
+  <li><code>swiat.ToIso(piksel)</code> – która kratka jest pod tym pikselem (część całkowita x i y).</li>
+</ul>
+<p>Kierunki przy domyślnym kącie 45°: większe <code>x</code> idzie w prawo i w górę ekranu, większe <code>y</code> w lewo i w górę.
+Kratka (0, 0) jest więc najniżej na ekranie, czyli najbliżej patrzącego.</p>
+<p><code>Origin</code> zostawiamy w (0, 0) – przesuwaniem i zoomem zajmie się kamera.</p>
+
+<!-- ============================================================ -->
+<h2 id="mapa">4. Dane mapy</h2>
+<p>Dwie warstwy liczb: numer klatki z atlasu albo <code>-1</code>, gdy pole jest puste.</p>
+<pre><code>class Mapa
+{
+    public readonly int Rozmiar;
+    public int[,] Teren;    // klatki z grass_and_water.png
+    public int[,] Obiekty;  // klatki z farma.png
+
+    public bool WSrodku(int x, int y) =&gt; x &gt;= 0 &amp;&amp; y &gt;= 0 &amp;&amp; x &lt; Rozmiar &amp;&amp; y &lt; Rozmiar;
+    ...
+}</code></pre>
+<p>W grze: <code>mapa.Teren[x, y] = 5;</code> stawia klatkę nr 5 terenu na kratce (x, y).</p>
+
+<!-- ============================================================ -->
+<h2 id="rysowanie">5. Rysowanie w dobrej kolejności</h2>
+<p>W izometrii bliższe rzeczy zasłaniają dalsze, więc rysujemy <b>od najdalszych do najbliższych</b> (algorytm malarza).
+Dalej leży kratka z większym <code>x + y</code>. Idziemy więc po przekątnych od największej sumy do zera,
+a na każdej kratce rysujemy najpierw teren, potem obiekt:</p>
+<pre><code>int n = mapa.Rozmiar;
+for (int suma = 2 * n - 2; suma &gt;= 0; suma--)
+    for (int x = Math.Max(0, suma - n + 1); x &lt;= Math.Min(n - 1, suma); x++)
+    {
+        int y = suma - x;
+        var srodekPola = swiat.ToScreen(new Vector3(x + 0.5f, y + 0.5f, 0));
+
+        int t = mapa.Teren[x, y], o = mapa.Obiekty[x, y];
+        if (t &gt;= 0) DrawSprite(teren[t], srodekPola);
+        if (o &gt;= 0) DrawSprite(obiekty[o], srodekPola, 0, 2f);
+    }</code></pre>
+<p>Kratki na tej samej przekątnej leżą obok siebie w poziomie i się nie zasłaniają, więc ich kolejność nie ma znaczenia.</p>
+<div class="note">To wystarcza, gdy każdy obiekt zajmuje jedną kratkę. Obiekty na kilka kratek (duży dom 3×3) albo
+poruszające się między kratkami potrzebują prawdziwego sortowania – do tego jest <code>IsoSorter</code> (projekt IsoStress).</div>
+
+<!-- ============================================================ -->
+<h2 id="kamera">6. Kamera</h2>
+<p>Kamera to dwie liczby: <code>zoom</code> i <code>przesuniecie</code>. Wzór: <b>ekran = świat × zoom + przesunięcie</b>.
+Do rysowania zamieniamy go na macierz i otwieramy <code>Batch</code> po swojemu (z ostrymi pikselami):</p>
+<pre><code>var kamera = Matrix.CreateScale(zoom) * Matrix.CreateTranslation(przesuniecie.X, przesuniecie.Y, 0);
+Batch.End();
+Batch.Begin(samplerState: SamplerState.PointClamp, transformMatrix: kamera);
+RysujMape();
+Batch.End();
+
+Batch.Begin(samplerState: SamplerState.PointClamp);   // interfejs bez kamery
+RysujInterfejs();
+Batch.End();
+
+Batch.Begin();   // na koniec zwykły Begin – aplikacja dorysuje ✕ i zamknie Batch</code></pre>
+<p>Dotyk przychodzi we współrzędnych ekranu, więc liczymy wzór od tyłu, a potem pytamy <code>IsoWorld</code> o kratkę:</p>
+<pre><code>Point PolePodPalcem(Vector2 ekran)
+{
+    var naSwiecie = (ekran - przesuniecie) / zoom;
+    var iso = swiat.ToIso(naSwiecie);
+    return new Point((int)MathF.Floor(iso.X), (int)MathF.Floor(iso.Y));
+}</code></pre>
+<p><code>Floor</code>, a nie rzutowanie na <code>int</code> – dla -0.3 rzutowanie da 0, a powinno -1 (poza mapą).</p>
+
+<!-- ============================================================ -->
+<h2 id="dotyk">7. Dotyk: malowanie, przesuwanie, zoom</h2>
+<p>Jeden palec może znaczyć różne rzeczy zależnie od tego, <b>gdzie dotknął na początku</b>. Dlatego pamiętamy,
+jaki gest trwa, aż palce znikną z ekranu:</p>
+<pre><code>enum Gest { Brak, Malowanie, Paleta, Kamera, Przycisk }
+Gest gest;</code></pre>
+<p>W <code>Update</code> liczymy palce, które wciąż dotykają (puszczony palec jest jeszcze przez jedną klatkę w <code>Touches</code> ze stanem <code>Released</code>):</p>
+<pre><code>palce.Clear();
+foreach (var t in Touches)
+    if (t.State != TouchLocationState.Released)
+        palce.Add(t);
+
+if (palce.Count == 0) { ZakonczGest(); return; }
+
+if (palce.Count &gt;= 2)
+{
+    // drugi palec tuż po pierwszym: to był początek przesuwania, nie malowanie
+    if (gest == Gest.Malowanie &amp;&amp; czasGestu &lt; 0.3f) CofnijPociagniecie();
+    if (gest != Gest.Kamera) { gest = Gest.Kamera; poprzedniaOdleglosc = 0; }
+    Kamera(palce[0].Position, palce[1].Position);
+    return;
+}
+
+var p = palce[0].Position;
+switch (gest)
+{
+    case Gest.Brak: ZacznijGest(p); break;          // nowy dotyk: przycisk? paleta? mapa?
+    case Gest.Malowanie: Maluj(p); break;
+    case Gest.Paleta: przewiniecie = ...; break;
+}</code></pre>
+
+<h3>Malowanie</h3>
+<pre><code>void Maluj(Vector2 p)
+{
+    var pole = PolePodPalcem(p);
+    kursor = pole;                                     // żółty romb pod palcem
+    if (!mapa.WSrodku(pole.X, pole.Y) || Warstwa[pole.X, pole.Y] == Wybrany) return;
+    Warstwa[pole.X, pole.Y] = Wybrany;                 // Wybrany = -1 to gumka
+    cosZmieniono = true;
+}</code></pre>
+
+<h3>Przesuwanie i zoom jednym wzorem</h3>
+<p>Sztuczka: punkt świata, który był pod środkiem palców w poprzedniej klatce, ma zostać pod nowym środkiem palców.
+Zmiana odległości między palcami zmienia zoom. Ten jeden wzór daje naraz przesuwanie i przybliżanie wokół palców:</p>
+<pre><code>void Kamera(Vector2 a, Vector2 b)
+{
+    var srodek = (a + b) / 2;
+    float odleglosc = Vector2.Distance(a, b);
+    if (poprzedniaOdleglosc &gt; 10 &amp;&amp; odleglosc &gt; 10)
+    {
+        var punktSwiata = (poprzedniSrodek - przesuniecie) / zoom;
+        zoom = Math.Clamp(zoom * odleglosc / poprzedniaOdleglosc, 0.4f, 5f);
+        przesuniecie = srodek - punktSwiata * zoom;
+    }
+    poprzedniSrodek = srodek;
+    poprzedniaOdleglosc = odleglosc;
+}</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="paleta">8. Paleta i przyciski</h2>
+<p>Paleta to pasek pól po 150 px. Pole nr <code>i</code> leży na <code>(i + 1) * 150 - przewiniecie</code>
+(pole −1 to gumka). Przeciąganie zmienia <code>przewiniecie</code>; <b>wybór</b> następuje dopiero przy puszczeniu palca
+i tylko wtedy, gdy palec prawie się nie ruszył – inaczej każde przewinięcie wybierałoby klatkę:</p>
+<pre><code>if (gest == Gest.Paleta &amp;&amp; MathF.Abs(ostatniDotyk.X - startDotyku.X) &lt; 25)
+{
+    int i = (int)((ostatniDotyk.X + przewiniecie) / SzerokoscPola) - 1;
+    if (i &lt; Paleta.Length) Wybrany = i;
+}</code></pre>
+<p>Przyciski to lista krotek <code>(obszar, napis, akcja, włączony)</code>, układana co klatkę od nowa
+(telefon można obrócić, a <code>Width</code>/<code>Height</code> się zmienią):</p>
+<pre><code>przyciski.Add((new Rectangle(20, 40, w, 90), "Cofnij", Cofnij, false));
+przyciski.Add((new Rectangle(30 + w, 40, w, 90), "Siatka", () =&gt; siatka = !siatka, siatka));
+
+// w ZacznijGest:
+foreach (var przycisk in przyciski)
+    if (przycisk.obszar.Contains(p)) { przycisk.akcja(); gest = Gest.Przycisk; return; }</code></pre>
+<p>Prawy górny róg zostawiamy wolny – tam jest ✕ aplikacji.</p>
+
+<!-- ============================================================ -->
+<h2 id="cofanie">9. Cofanie i zapis</h2>
+<p>Cofanie jest najprostsze z możliwych: na początku każdego pociągnięcia palcem zapamiętujemy kopię obu tablic.
+Przy mapie 16×16 to 2 KB, więc 50 kroków wstecz kosztuje 100 KB.</p>
+<pre><code>public (int[,] teren, int[,] obiekty) Kopia() =&gt; ((int[,])Teren.Clone(), (int[,])Obiekty.Clone());</code></pre>
+<p>Jeśli pociągnięcie niczego nie zmieniło (np. malowanie tą samą klatką), kopię wyrzucamy przy puszczeniu palca.</p>
+<p>Zapis używa <code>ProjectFile</code> – pełnej ścieżki w folderze projektu – i zwykłego <code>System.IO</code>:</p>
+<pre><code>using System.IO;
+File.WriteAllText(ProjectFile("mapa.txt"), mapa.DoTekstu());
+mapa = Mapa.ZTekstu(File.ReadAllText(ProjectFile("mapa.txt")));</code></pre>
+<p>Format pliku: pierwsza linia to rozmiar, potem wiersze terenu, potem wiersze obiektów – liczby rozdzielone spacją.
+Plik możesz otworzyć i poprawić w menedżerze plików albo przez FTP.</p>
+
+<!-- ============================================================ -->
+<h2 id="dalej">10. Zadania: co dalej</h2>
+<ol>
+  <li><b>Pipeta</b> – przytrzymanie palca na kratce przez 0,5 s wybiera jej klatkę do palety. Podpowiedź: <code>czasGestu</code> i to, czy palec się ruszył.</li>
+  <li><b>Wypełnianie</b> – przycisk „Wiadro” i flood fill (kolejka <code>Queue&lt;Point&gt;</code>) po kratkach z tą samą klatką.</li>
+  <li><b>Rozmiar mapy</b> – przycisk zmieniający rozmiar 16 → 24 → 32 z przepisaniem starej zawartości.</li>
+  <li><b>Wysokość</b> – trzecia warstwa <code>int[,] Wysokosc</code> i rysowanie w <code>ToScreen(new Vector3(x + 0.5f, y + 0.5f, h))</code>. <code>IsoWorld(32, 16)</code> – drugi parametr to piksele na jednostkę wysokości.</li>
+  <li><b>Gra na tej mapie</b> – nowy projekt, skopiuj <code>Mapa.cs</code>, obrazki i <code>mapa.txt</code>, dodaj postać chodzącą po trawie, która omija wodę (sprawdzaj numer klatki terenu).</li>
+  <li><b>Automatyczne brzegi</b> – po namalowaniu wody wybieraj klatkę przejścia na podstawie sąsiadów (autotiling).</li>
+</ol>
+<p style="margin-top:24px"><a href="#">↑ do góry</a> · <a href="help.html">Poradnik API</a></p>
+</body>
+</html>
