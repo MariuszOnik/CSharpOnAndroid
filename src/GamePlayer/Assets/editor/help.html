@@ -49,6 +49,7 @@
   <li><a href="#matma">Wektory, kolizje, losowanie</a></li>
   <li><a href="#monogame">Więcej z MonoGame</a></li>
   <li><a href="#iso">Silnik izometryczny</a></li>
+  <li><a href="#modele">Modele 3D</a></li>
   <li><a href="#pliki">Pliki, zapis, dźwięk</a></li>
   <li><a href="#brak">Czego nie ma</a></li>
   <li><a href="#bledy">Błędy i pułapki</a></li>
@@ -493,6 +494,7 @@ Batch.End();
 Batch.Begin();</code></pre>
 
 <h3>Proste 3D</h3>
+<p>Gotowe modele z plików rysuje <code>DrawModel</code> – patrz <a href="#modele">Modele 3D</a>. Niżej: własne trójkąty z kodu.</p>
 <p><code>BasicEffect</code>, <code>VertexPositionColor</code>, <code>GraphicsDevice.DrawUserPrimitives</code> działają
 (wbudowane efekty MonoGame są skompilowane). Rysuj je między <code>Batch.End()</code> a <code>Batch.Begin()</code>.</p>
 <pre><code>BasicEffect efekt;   // Start: efekt = new BasicEffect(GraphicsDevice) { VertexColorEnabled = true };
@@ -537,7 +539,7 @@ while (TouchPanel.IsGestureAvailable)
   <tr><td>Gesty TouchPanel</td><td class="maybe">powinny działać, niesprawdzone</td></tr>
   <tr><td>SoundEffect z pliku WAV</td><td class="maybe">powinien działać, niesprawdzony (patrz niżej)</td></tr>
   <tr><td>Song / MediaPlayer (MP3, muzyka)</td><td class="no">raczej nie – wymaga Content Pipeline</td></tr>
-  <tr><td>Content.Load, pliki .xnb, SpriteFont</td><td class="no">nie – zamiast tego LoadImage i DrawText</td></tr>
+  <tr><td>Content.Load, pliki .xnb, SpriteFont, Model</td><td class="no">nie – zamiast tego LoadImage, DrawText i LoadModel (OBJ)</td></tr>
   <tr><td>Własne shadery (.fx / Effect)</td><td class="no">nie – brak kompilatora shaderów na telefonie</td></tr>
   <tr><td>Obiekt Game: Exit(), Components, IsFixedTimeStep, TargetElapsedTime</td><td class="no">nie – zarządza nim aplikacja</td></tr>
   <tr><td>Keyboard, Mouse, GamePad</td><td class="no">nieobsługiwane przez GameScript</td></tr>
@@ -596,6 +598,72 @@ public override void Draw()
     foreach (var o in sorter.Sort(obiekty, 0, 0, Width, Height))
         Batch.Draw(o.Sprite, world.ToScreen(o.Position) + przesuniecia[o.Sprite], o.Color);
 }</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="modele">12b. Modele 3D <span class="maybe">(niesprawdzone na telefonie)</span></h2>
+<p>Model to plik <b>OBJ</b> (eksportuje go Blender i większość programów 3D). Wrzuć go do folderu
+<code>models/</code> projektu razem z plikiem <code>.mtl</code> (kolory, tekstury) i teksturami PNG – tak jak obrazki do <code>images/</code>.
+Gotowy przykład: projekt <b>Wiatrak3D</b>.</p>
+<pre><code>Model3D domek;
+float czas;
+
+public override void Start()
+{
+    domek = LoadModel("domek.obj");
+}
+
+public override void Update(float dt)
+{
+    czas += dt;
+    Camera.Orbit(Vector3.Zero, 12, czas * 0.5f, 0.4f);   // kamera krąży wokół punktu (0, 0, 0)
+}
+
+public override void Draw()
+{
+    DrawModel(domek, Vector3.Zero);                              // w punkcie
+    DrawModel(domek, new Vector3(5, 0, 0), czas, 0.5f);          // obrót wokół pionu, skala
+    DrawModel(domek, new Vector3(-5, 0, 0), color: Color.Red);   // barwienie
+    DrawText("To jest na wierzchu", 30, 60, 40, Color.White);
+}</code></pre>
+<ul>
+  <li>Oś <b>Y to góra</b>, jednostki dowolne (wygodnie: 1 = 1 metr). W Blenderze przy eksporcie: <i>Forward −Z, Up Y</i>.</li>
+  <li>Kolejność w <code>Draw</code> działa jak w 2D: obrazek narysowany <b>przed</b> modelami jest tłem,
+      tekst i sprite'y narysowane <b>po</b> – są na wierzchu. Same modele zasłaniają się według odległości od kamery.</li>
+  <li>Tekstury, które mają się powtarzać (trawa, cegły), powinny mieć boki 64, 128, 256, 512… pikseli.</li>
+  <li>Po <code>DrawModel</code>, a przed własnym <code>Batch.Draw</code>, wywołaj <code>End3D()</code>
+      (<code>DrawText</code>, <code>DrawImage</code>, <code>DrawSprite</code>, <code>FillRect</code> robią to same).</li>
+</ul>
+
+<h3>Kamera i światło</h3>
+<pre><code>Camera.LookAt(new Vector3(0, 5, 10), new Vector3(0, 1, 0));   // skąd, na co
+Camera.Orbit(cel, odleglosc, obrot, uniesienie);              // krążenie wokół celu (kąty w radianach)
+Camera.FieldOfView = 60;                                      // kąt widzenia w stopniach
+LightDirection = new Vector3(-1, -1, 0);                      // kierunek światła
+AmbientLight = new Color(120, 120, 130);                      // jasność cieni
+
+Vector3 p = WorldToScreen(new Vector3(0, 2, 0));              // punkt 3D → piksele ekranu
+if (p.Z > 0 && p.Z < 1) DrawTextCentered("Domek", p.X, p.Y, 32, Color.White);</code></pre>
+
+<h3>Dowolne ustawienie modelu</h3>
+<pre><code>// Mnożenie macierzy czytaj od lewej: najpierw skala, potem obroty, na końcu przesunięcie.
+var swiat = Matrix.CreateScale(2) * Matrix.CreateRotationX(0.3f) * Matrix.CreateRotationY(czas)
+          * Matrix.CreateTranslation(0, 1, 0);
+DrawModel(samolot, swiat);</code></pre>
+
+<h3>Animacja</h3>
+<p><b>Ruch części.</b> Każdy obiekt z pliku OBJ (linia <code>o nazwa</code>, w Blenderze osobny obiekt) to osobna część,
+którą można obracać i przesuwać: śmigło, koła, wieżyczka czołgu, drzwi.</p>
+<pre><code>wiatrak.Part("smigla").SetRotation(Vector3.UnitZ, czas * 2);   // obrót wokół środka części
+czolg.Part("wieza").Pivot = new Vector3(0, 1.2f, 0);           // własny punkt obrotu
+czolg.Part("wieza").SetRotation(Vector3.Up, kat);
+winda.Part("kabina").SetOffset(new Vector3(0, wysokosc, 0));   // przesunięcie
+drzwi.Part("skrzydlo").Visible = false;                        // ukrycie</code></pre>
+<p><b>Klatki.</b> Postać można animować jak sprite'a: wyeksportuj z Blendera animację jako serię plików OBJ
+i podmieniaj model.</p>
+<pre><code>Model3D[] bieg;   // Start: bieg = new[] { LoadModel("bieg_1.obj"), LoadModel("bieg_2.obj"), LoadModel("bieg_3.obj") };
+// Draw:
+DrawModel(bieg[(int)(czas * 10) % bieg.Length], pozycja, kierunek);</code></pre>
+<p class="note">Animacji szkieletowej (kości, pliki glTF/FBX) jeszcze nie ma.</p>
 
 <!-- ============================================================ -->
 <h2 id="pliki">13. Pliki, zapis, dźwięk</h2>
@@ -680,6 +748,12 @@ skok.Play();                               // albo skok.Play(glosnosc, wysokosc,
   <tr><td><code>DrawSprite(s, poz, obrót, skala, kolor, flipX, flipY)</code></td><td>sprite z pivotem w poz</td></tr>
   <tr><td><code>Sprite.Animate(klatki, czas, fps)</code></td><td>bieżąca klatka animacji</td></tr>
   <tr><td><code>new Sprite(img, wycinek, pivot)</code>, <code>.Pivot</code>, <code>.SetPivotPixels</code></td><td>własny wycinek / zmiana pivota</td></tr>
+  <tr><td><code>LoadModel(nazwa)</code></td><td>wczytaj model OBJ z <code>models/</code> → <code>Model3D</code></td></tr>
+  <tr><td><code>DrawModel(model, poz, obrótY, skala, kolor)</code>, <code>DrawModel(model, macierz)</code></td><td>narysuj model 3D</td></tr>
+  <tr><td><code>Camera.LookAt</code>, <code>Camera.Orbit</code>, <code>Camera.FieldOfView</code></td><td>kamera 3D</td></tr>
+  <tr><td><code>LightDirection</code>, <code>LightColor</code>, <code>AmbientLight</code></td><td>światło 3D</td></tr>
+  <tr><td><code>model.Part(nazwa)</code>: <code>SetRotation</code>, <code>SetOffset</code>, <code>Pivot</code>, <code>Visible</code></td><td>ruch części modelu</td></tr>
+  <tr><td><code>WorldToScreen(punkt)</code>, <code>End3D()</code></td><td>punkt 3D na ekranie / powrót do 2D przed własnym <code>Batch.Draw</code></td></tr>
   <tr><td><code>ProjectFolder</code>, <code>ProjectFile(nazwa)</code></td><td>folder projektu / ścieżka pliku w nim</td></tr>
   <tr><td><code>Batch</code>, <code>GraphicsDevice</code>, <code>Pixel</code></td><td>bezpośredni dostęp do MonoGame</td></tr>
 </table>

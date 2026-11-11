@@ -48,6 +48,18 @@ Plan techniczny:
 - `GameScript.ProjectFolder` / `ProjectFile(nazwa)` – zapis plików gry w folderze projektu
 - Przykłady instalują się przy każdym starcie, jeśli jeszcze nie były (flaga per przykład) – wcześniej tylko przy pierwszym
 
+## 2026-11-11 – GitHub, Actions, modele 3D
+- Repo: https://github.com/MariuszOnik/CSharpOnAndroid (publiczne), `.github/workflows/build.yml` buduje Release arm64 + arm (artefakty APK).
+  Podpis stałym kluczem z sekretów `ANDROID_KEYSTORE_BASE64` / `ANDROID_KEYSTORE_PASSWORD`; klucz lokalnie w `%USERPROFILE%\.csharponandroid-signing\` (poza repo)
+- Modele 3D: `GameApi/ObjParser.cs` (OBJ + MTL), `Model3D.cs` (`Model3D`, `Part3D`, `Surface3D`), `Camera3D.cs`;
+  w `GameScript`: `LoadModel`, `DrawModel`, `Camera`, `LightDirection`, `WorldToScreen`, `End3D`.
+  Pliki w `models/` projektu, potem `CsharpGame/models/`, potem `Assets/models/`
+- `DrawModel` zamyka batch 2D i przechodzi w tryb 3D; pomocniki 2D (`DrawText` itd.) same wracają przez `End3D()`,
+  host woła `End3D()` po `Draw()` – dzięki temu kolejność rysowania 2D/3D jest taka jak w kodzie
+- Animacja: ruch części (`model.Part("nazwa").SetRotation/SetOffset`) i podmiana modeli-klatek. Szkieletowej (glTF) nie ma
+- Przykład `Wiatrak3D`; modele i tekstury generuje skrypt (własne, bez obcych zasobów)
+- Parser OBJ i kamera sprawdzone testem na PC; rysowanie 3D **niesprawdzone jeszcze na telefonie**
+
 Pułapki, na które już trafiliśmy:
 - FastDev psuł GameApi.dll → `EmbedAssembliesIntoApk=true`
 - mgcb się wywalał → usunięty `MonoGame.Content.Builder.Task` (obrazki ładujemy z PNG)

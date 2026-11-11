@@ -1,0 +1,12 @@
+newmtl cegly
+Kd 1 1 1
+map_Kd cegly.png
+
+newmtl dach
+Kd 0.55 0.2 0.16
+
+newmtl drewno
+Kd 0.42 0.28 0.16
+
+newmtl smigla
+Kd 0.93 0.88 0.74

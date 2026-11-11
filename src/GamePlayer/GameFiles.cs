@@ -13,7 +13,9 @@ public record SourceFile(string Name, string Text);
 /// Pliki gier gracza. Docelowo w publicznym folderze /sdcard/CsharpGame (dostępnym przez FTP i menedżer plików):
 ///   CsharpGame/projects/NazwaGry/*.cs      – kod gry
 ///   CsharpGame/projects/NazwaGry/images/   – obrazki tej gry
+///   CsharpGame/projects/NazwaGry/models/   – modele 3D tej gry (OBJ + MTL + tekstury)
 ///   CsharpGame/images/                     – obrazki wspólne dla wszystkich gier
+///   CsharpGame/models/                     – modele wspólne dla wszystkich gier
 /// Bez zgody na dostęp do plików używamy prywatnego folderu aplikacji.
 /// </summary>
 public static class GameFiles
@@ -93,6 +95,7 @@ public static class GameFiles
             throw new IOException($"Projekt '{name}' już istnieje.");
 
         Directory.CreateDirectory(Path.Combine(dir, "images"));
+        Directory.CreateDirectory(Path.Combine(dir, "models"));
         File.WriteAllText(Path.Combine(dir, "Game.cs"), NewProjectCode);
         return name;
     }
@@ -103,6 +106,10 @@ public static class GameFiles
     /// <summary>Foldery z obrazkami gry, w kolejności szukania.</summary>
     public static string[] ImageDirs(Context context, string project) =>
         [Path.Combine(ProjectDir(context, project), "images"), Path.Combine(Root(context), "images")];
+
+    /// <summary>Foldery z modelami 3D gry (OBJ, MTL, tekstury), w kolejności szukania.</summary>
+    public static string[] ModelDirs(Context context, string project) =>
+        [Path.Combine(ProjectDir(context, project), "models"), Path.Combine(Root(context), "models")];
 
     // ---------- Pliki projektu ----------
 
@@ -188,6 +195,7 @@ public static class GameFiles
             var projects = Path.Combine(root, "projects");
             Directory.CreateDirectory(projects);
             Directory.CreateDirectory(Path.Combine(root, "images"));
+            Directory.CreateDirectory(Path.Combine(root, "models"));
 
             var preferences = context.GetSharedPreferences(Preferences, FileCreationMode.Private)!;
             // Przykłady sprawdzamy przy każdym starcie, żeby nowe wersje aplikacji dokładały nowe przykłady.

@@ -16,6 +16,9 @@ public class GameHost : Game
     /// <summary>Foldery z obrazkami uruchamianego projektu, w kolejności szukania.</summary>
     public static string[] PendingImageDirs = [];
 
+    /// <summary>Foldery z modelami 3D uruchamianego projektu, w kolejności szukania.</summary>
+    public static string[] PendingModelDirs = [];
+
     /// <summary>Folder uruchamianego projektu.</summary>
     public static string PendingProjectFolder = "";
 
@@ -54,7 +57,7 @@ public class GameHost : Game
         Guard(() =>
         {
             _script = (GameScript)Activator.CreateInstance(PendingScriptType)!;
-            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage, ListImages, ReadAsset("fonts/DejaVuSans.ttf"));
+            _script.Attach(GraphicsDevice, _batch, _pixel, OpenImage, ListImages, OpenModel, ReadAsset("fonts/DejaVuSans.ttf"));
             _script.SetProjectFolder(PendingProjectFolder);
             _script.Start();
         });
@@ -119,8 +122,13 @@ public class GameHost : Game
         CountFrame(gameTime);
         GraphicsDevice.Clear(_script?.Background ?? Color.Black);
         _batch.Begin();
-        if (_script != null)
-            Guard(() => _script.Draw());
+        var script = _script;
+        if (script != null)
+        {
+            Guard(script.Draw);
+            // Skrypt mógł skończyć (albo wywalić się) w trybie 3D, z zamkniętym batchem.
+            script.End3D();
+        }
         DrawExitButton();
         _batch.End();
 
@@ -128,21 +136,25 @@ public class GameHost : Game
     }
 
 
-    // Kolejność: pełna ścieżka albo foldery images projektu, potem obrazki wbudowane w aplikację.
-    Stream OpenImage(string name)
+    Stream OpenImage(string name) => OpenFile(PendingImageDirs, "images/", name, "obrazka");
+
+    Stream OpenModel(string name) => OpenFile(PendingModelDirs, "models/", name, "pliku modelu");
+
+    // Kolejność: pełna ścieżka albo foldery projektu, potem pliki wbudowane w aplikację.
+    Stream OpenFile(string[] dirs, string assetFolder, string name, string what)
     {
-        string[] candidates = Path.IsPathRooted(name) ? [name] : [.. PendingImageDirs.Select(dir => Path.Combine(dir, name))];
+        string[] candidates = Path.IsPathRooted(name) ? [name] : [.. dirs.Select(dir => Path.Combine(dir, name))];
         var userFile = candidates.FirstOrDefault(File.Exists);
         if (userFile != null)
             return File.OpenRead(userFile);
 
         try
         {
-            return new MemoryStream(ReadAsset("images/" + name));
+            return new MemoryStream(ReadAsset(assetFolder + name));
         }
         catch (Java.IO.FileNotFoundException)
         {
-            throw new FileNotFoundException($"Nie ma obrazka '{name}'.");
+            throw new FileNotFoundException($"Nie ma {what} '{name}'.");
         }
     }
 
